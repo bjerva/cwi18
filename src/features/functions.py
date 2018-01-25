@@ -1,7 +1,10 @@
 import os
 import pickle
+
 import scipy.sparse
+
 from features.vocab import Vocab
+from util.io import TARGET
 
 
 class FeatureFunction:
@@ -115,8 +118,23 @@ class Features:
 class Frequency(FeatureFunction):
 
     def __init__(self, name="frequency", language_model=None):
+        self.lm = self.load_lm(language_model)
+        super().__init__(name)
+
+    @staticmethod
+    def load_lm(path):
+        # TODO
+        return None
+
+    def process(self, data):
+        return map(lambda x: self.lm[x[TARGET]], data)
+
+
+class Dummy(FeatureFunction):
+
+    def __init__(self, name="dummy"):
         super().__init__(name)
 
     def process(self, data):
-        # TODO
-        pass
+        return list(map(lambda x: x[TARGET], data))
+
