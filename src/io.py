@@ -1,0 +1,31 @@
+# DATASET FORMAT DEFINITON
+ID = 0
+SENTENCE = 1
+START = 2
+END = 3
+TARGET = 4
+NATIVE_SEEN = 5
+FOREIGN_SEEN = 6
+NATIVE_COMPLEX = 7
+FOREIGN_COMPLEX = 8
+LABEL_ANY = 9
+LABEL_FRACTION = 10
+
+DATASET_FIELDS_TRAIN = [ID, SENTENCE, START, END, TARGET, NATIVE_SEEN,
+                        FOREIGN_SEEN, NATIVE_COMPLEX, FOREIGN_COMPLEX,
+                        LABEL_ANY, LABEL_FRACTION]
+DATASET_FIELDS_TEST = [ID, SENTENCE, START, END, TARGET, NATIVE_SEEN,
+                       FOREIGN_SEEN]
+
+FIELD_SEPARATOR = "\t"
+
+
+class Dataset:
+    # TODO
+    def __init__(self):
+        pass
+
+
+def get_data(lang, split):
+    # TODO
+    return Dataset()
