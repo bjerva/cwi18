@@ -136,5 +136,5 @@ class Dummy(FeatureFunction):
         super().__init__(name)
 
     def process(self, data):
-        return list(map(lambda x: x[TARGET], data))
+        return [0 for _ in range(len(data))]
 

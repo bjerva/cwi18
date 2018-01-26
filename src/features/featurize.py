@@ -15,8 +15,8 @@ def featurize(dataset, feature_functions, return_vectorizer=False):
         for i in range(len(dataset))
     ]
     v = DictVectorizer()
-    X = v.fit_transform(per_example_dicts)
-    y = np.array([x[LABEL_FRACTION] for x in dataset])
+    X = v.fit_transform(per_example_dicts).todense()
+    y = np.array([float(x[LABEL_FRACTION]) for x in dataset])
     if return_vectorizer:
         return X, y, v
     else:

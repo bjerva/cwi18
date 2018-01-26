@@ -13,18 +13,23 @@ class MTMLP(nn.Module):
                   "specified.".format(hidden_dims))
             hidden_dims = [hidden_dims]
 
+        self.all_parameters = nn.ParameterList()
         # Define input and hidden layers
         self.dimensionalities = [input_dim] + hidden_dims
         self.hidden = []
         i = 0
         for i in range(len(hidden_dims)):
-            self.hidden.append(nn.Linear(self.dimensionalities[i],
-                                         self.dimensionalities[i + 1]))
+            layer = nn.Linear(self.dimensionalities[i],
+                              self.dimensionalities[i+1])
+            self.hidden.append(layer)
+            self.all_parameters.append(layer.weight)
+
         # Define outputs
         self.outputs = []
         for output_dim in output_dims:
-            self.outputs.append(nn.Linear(self.dimensionalities[i + 1],
-                                          output_dim))
+            layer = nn.Linear(self.dimensionalities[i+1], output_dim)
+            self.outputs.append(layer)
+            self.all_parameters.append(layer.weight)
 
         # Define nonlinearity and dropout (used across all hidden
         # layers in self.forward())
@@ -32,8 +37,8 @@ class MTMLP(nn.Module):
         self.dropout = nn.Dropout(0.2)
 
         # Initialize all weights
-        for layer in self.hidden + self.outputs:
-            nn.init.xavier_normal(layer.weight)
+        for weight_matrix in self.all_parameters:
+            nn.init.xavier_normal(weight_matrix)
 
     def forward(self, x):
         """
