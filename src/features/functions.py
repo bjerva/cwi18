@@ -4,7 +4,8 @@ import pickle
 import scipy.sparse
 
 from features.vocab import Vocab
-from util.io import TARGET
+from util.io import TARGET, NATIVE_SEEN
+import kenlm
 
 
 class FeatureFunction:
@@ -114,7 +115,6 @@ class Features:
             ff.load(mname)
 
 
-# TODO define feature functions
 class Frequency(FeatureFunction):
 
     def __init__(self, name="frequency", language_model=None):
@@ -123,11 +123,59 @@ class Frequency(FeatureFunction):
 
     @staticmethod
     def load_lm(path):
-        # TODO
-        return None
+        return kenlm.LanguageModel(str(path))
 
     def process(self, data):
-        return map(lambda x: self.lm[x[TARGET]], data)
+        return list(map(
+            lambda x: self.lm.score(x[TARGET], bos=False, eos=False),
+            data))
+
+
+class CharacterPerplexity(FeatureFunction):
+    def __init__(self, name="char_ppl", language_model=None):
+        self.lm = self.load_lm(language_model)
+        super().__init__(name)
+
+    @staticmethod
+    def load_lm(path):
+        return kenlm.LanguageModel(str(path))
+
+    def process(self, data):
+        return list(map(
+            lambda x: self.lm.perplexity(" ".join(list(x[TARGET]))),
+            data))
+
+
+class WordForm(FeatureFunction):
+    def __init__(self, name="word_length"):
+        super().__init__(name)
+
+    def process(self, data):
+        return list(map(lambda x: x[TARGET], data))
+
+
+class WordLength(FeatureFunction):
+    def __init__(self, name="word_length"):
+        super().__init__(name)
+
+    def process(self, data):
+        return list(map(lambda x: len(x[TARGET]), data))
+
+
+class PartOfSpeech(FeatureFunction):
+    def __init__(self, name="part_of_speech"):
+        super().__init__(name)
+
+    def process(self, data):
+        return [0 for _ in range(len(data))]  # TODO
+
+
+class NativeAnnotatorsNumber(FeatureFunction):
+    def __init__(self, name="native_annotators_number"):
+        super().__init__(name)
+
+    def process(self, data):
+        return list(map(lambda x: int(x[NATIVE_SEEN]), data))
 
 
 class Dummy(FeatureFunction):

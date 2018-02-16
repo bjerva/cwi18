@@ -1,10 +1,10 @@
 import random
 
 import torch
-import torch.nn.functional as F
 from tqdm import tqdm
 from sklearn.utils import shuffle
 from sklearn.metrics import mean_squared_error
+from scipy.stats import spearmanr
 from util.batching import Batcher, prepare, prepare_with_labels
 
 
@@ -42,6 +42,7 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         batcher = Batcher(X, batch_size)
         batches.append(batcher)
 
+    X, y = None, None
     for epoch in tqdm(range(epochs)):
         epoch_loss = 0
         epoch_data_size = 0
@@ -76,18 +77,19 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         if lr_schedule is not None:
             optimizer = lr_schedule(optimizer, epoch)
 
-        print("Average epoch loss: {0}".format(
-            (epoch_loss / epoch_data_size).data.numpy()))
-
-        print("Epoch Train MSE {0}".format(eval_model(
-            model, (X, y), task_id=task_id, batch_size=batch_size)))
+        # print("Average epoch loss: {0}".format(
+        #     (epoch_loss / epoch_data_size).data.numpy()))
+        #
+        # print("Latest Epoch Train MSE {0}".format(eval_model(
+        #     model, X, y, task_id=task_id, batch_size=batch_size)[0]))
         if dev is not None:
             X_dev, y_dev = dev
-            acc = eval_model(model, (X_dev, y_dev), task_id=task_id,
-                             batch_size=batch_size)
-            print("Epoch Dev MSE {0}".format(acc))
+            mse, corr = eval_model(model, X_dev, y_dev, task_id=task_id,
+                                   batch_size=batch_size)
+            print("Epoch Dev MSE {:1.4f}".format(mse))
+            # print("Epoch Dev Corr {:1.4f}".format(corr))
 
-            if early_stopping is not None and early_stopping(model, acc):
+            if early_stopping is not None and early_stopping(model, mse):
                 early_stopping.set_best_state(model)
                 break
 
@@ -95,14 +97,18 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         early_stopping.set_best_state(model)
 
 
-def eval_model(model, dataset, task_id=0, batch_size=64, label_type="scalar"):
-    data, labels = dataset
-    predicted = predict_model(model, data, task_id, batch_size).data.numpy()
+def eval_model(model, X, y_true, task_id=0, batch_size=64, label_type="scalar"):
+    predicted = predict_model(model, X, task_id, batch_size).data.numpy()
+    predicted = predicted.reshape([-1])
+    mse, rank_corr = 0, float('nan')
     if label_type == "scalar":
-        return mean_squared_error(labels, predicted)
+        mse = mean_squared_error(y_true, predicted)
     else:
-        raise NotImplementedError("Only scalar error evaluation (using MSE)"
-                                  "implemented so far.")
+        print("Warning: Only scalar error evaluation "
+              "(using MSE) implemented so far.")
+    if predicted.sum() > 0:
+        rank_corr = spearmanr(y_true, predicted)[0]
+    return mse, rank_corr
 
 
 def predict_model(model, data, task_id=0, batch_size=64):
@@ -111,6 +117,6 @@ def predict_model(model, data, task_id=0, batch_size=64):
     for batch, size, start, end in batcher:
         d = prepare(batch)
         model.eval()
-        logits = model(d)[task_id].cpu()
-        predicted.extend(torch.max(logits, 1)[1])
+        pred = model(d)[task_id].cpu()
+        predicted.extend(pred)
     return torch.stack(predicted)
