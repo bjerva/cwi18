@@ -1,37 +1,36 @@
 import torch
 import numpy as np
 
-from scipy.sparse import coo_matrix, issparse
+from scipy.sparse import issparse
 from torch.autograd import Variable
 
 
 class Batcher:
 
-    def __init__(self, data, size):
-        self.data = data
+    def __init__(self, total_size, size):
+        self.total_size = total_size
         self.size = size
         self.pointer = 0
 
-        if isinstance(self.data, coo_matrix):
-            self.data = self.data.tocsr()
+        # if isinstance(self.data, coo_matrix):
+        #     self.data = self.data.tocsr()
 
     def next_loop(self):
-        if self.pointer == splen(self.data):
+        if self.pointer == self.total_size:
             self.pointer = 0
         return self.__next__()
 
     def __next__(self):
-        if self.pointer == splen(self.data):
+        if self.pointer == self.total_size:
             self.pointer = 0
             raise StopIteration
 
-        next_pointer = min(splen(self.data), self.pointer+self.size)
-        to_return = self.data[self.pointer: next_pointer]
+        next_pointer = min(self.total_size, self.pointer+self.size)
 
         start, end = self.pointer, next_pointer
 
         self.pointer = next_pointer
-        return to_return, splen(to_return), start, end
+        return end-start, start, end
 
     def __iter__(self):
         return self
@@ -44,7 +43,7 @@ def splen(data):
         return len(data)
 
 
-def prepare_with_labels(data, labels, label_type="scalar"):
+def prepare_with_labels(data, labels, binary=True):
     # Note, we should just be passing in a sparse minibatch here!
     # Doing todense on the entire datset is silly
     if issparse(data):
@@ -55,10 +54,13 @@ def prepare_with_labels(data, labels, label_type="scalar"):
     #     return Variable(v.cuda()), Variable(torch.LongTensor(labels).cuda())
     # print(labels)
     # print(Variable(torch.FloatTensor(labels)))
-    if label_type == "scalar":
-        return Variable(v), Variable(torch.FloatTensor(labels))
+    if binary:
+        return Variable(v), Variable(torch.FloatTensor(np.array(labels)))
+
+        # return Variable(v), Variable(torch.LongTensor(np.array(labels)))
+        # return Variable(v), Variable(labels)
     else:
-        raise NotImplementedError("Only label type scalar implemented so far")
+        return Variable(v), Variable(torch.FloatTensor(np.array(labels)))
 
 def prepare(data):
     # Note, we should just be passing in a sparse minibatch here!

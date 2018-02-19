@@ -1,9 +1,10 @@
 import numpy as np
-from util.io import LABEL_FRACTION
+from util.io import LABEL_ANY, LABEL_FRACTION
 from sklearn.feature_extraction import DictVectorizer
 
 
-def featurize(dataset, feature_functions, return_vectorizer=False):
+def featurize(dataset, feature_functions, binary=False,
+              return_vectorizer=False):
     feature2values = {
         func.name: func.process(dataset)
         for func in feature_functions
@@ -16,7 +17,10 @@ def featurize(dataset, feature_functions, return_vectorizer=False):
     ]
     v = DictVectorizer()
     X = v.fit_transform(per_example_dicts).todense()
-    y = np.array([float(x[LABEL_FRACTION]) for x in dataset])
+    if binary:
+        y = np.array([int(x[LABEL_ANY]) for x in dataset])
+    else:
+        y = np.array([float(x[LABEL_FRACTION]) for x in dataset])
     if return_vectorizer:
         return X, y, v
     else:

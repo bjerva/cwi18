@@ -5,7 +5,9 @@ from tqdm import tqdm
 from sklearn.utils import shuffle
 from sklearn.metrics import mean_squared_error
 from scipy.stats import spearmanr
-from util.batching import Batcher, prepare, prepare_with_labels
+from util.batching import Batcher, prepare, prepare_with_labels, splen
+import math
+from sklearn.metrics import f1_score
 
 
 def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
@@ -33,14 +35,14 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         batches_per_epoch = sum([len(dataset[0]) for dataset
                                  in training_datasets]) // batch_size
     print("Batches per epoch:", batches_per_epoch)
-    batches = []
+    batchers = []
 
     for training_dataset in training_datasets:
         X, y = training_dataset
         if shuffle_data:
             X, y = shuffle(X, y)
-        batcher = Batcher(X, batch_size)
-        batches.append(batcher)
+        batcher = Batcher(len(X), batch_size)
+        batchers.append(batcher)
 
     X, y = None, None
     for epoch in tqdm(range(epochs)):
@@ -48,22 +50,21 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         epoch_data_size = 0
         for b in range(batches_per_epoch):
             task_id = random.choice(range(len(training_datasets)))
-            batcher = batches[task_id]
-            # for idx,batcher in enumerate(zip(*batches)):
+            batcher = batchers[task_id]
             X, y = training_datasets[task_id]
-            batch, size, start, end = batcher.next_loop()
-            # for batch, size, start, end in batcher:
-            d, gold = prepare_with_labels(batch, y[start:end],
-                                          label_type="scalar")
-
+            size, start, end = batcher.next_loop()
+            d, gold = prepare_with_labels(X[start:end], y[start:end],
+                                          model.binary)
             model.train()
             optimizer.zero_grad()
-            logits_list = model(d)
-
-            logits = logits_list[task_id]
-            # print(logits)
-            lossfunc = torch.nn.MSELoss()
-            loss = lossfunc(logits, gold)
+            logits_all_tasks = model(d)
+            logits = logits_all_tasks[task_id]
+            gold = gold.view([size, 1])
+            if model.binary:
+                logits = torch.nn.functional.sigmoid(logits)
+                loss = torch.nn.functional.binary_cross_entropy(logits, gold)
+            else:
+                loss = (logits - gold).pow(2).sum()
             loss.backward()
 
             epoch_loss += loss.cpu()
@@ -80,16 +81,17 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         # print("Average epoch loss: {0}".format(
         #     (epoch_loss / epoch_data_size).data.numpy()))
         #
-        # print("Latest Epoch Train MSE {0}".format(eval_model(
+        # print("Latest Epoch Train RMSE {0}".format(eval_model(
         #     model, X, y, task_id=task_id, batch_size=batch_size)[0]))
         if dev is not None:
             X_dev, y_dev = dev
-            mse, corr = eval_model(model, X_dev, y_dev, task_id=task_id,
-                                   batch_size=batch_size)
-            print("Epoch Dev MSE {:1.4f}".format(mse))
+            METRIC_NAME = "F1" if model.binary else "RMSE"
+            metric, corr, _ = eval_model(model, X_dev, y_dev, task_id=task_id,
+                                      batch_size=batch_size)
+            print("Epoch Dev {} {:1.4f}".format(METRIC_NAME, metric))
             # print("Epoch Dev Corr {:1.4f}".format(corr))
 
-            if early_stopping is not None and early_stopping(model, mse):
+            if early_stopping is not None and early_stopping(model, metric):
                 early_stopping.set_best_state(model)
                 break
 
@@ -97,25 +99,41 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         early_stopping.set_best_state(model)
 
 
-def eval_model(model, X, y_true, task_id=0, batch_size=64, label_type="scalar"):
+def eval_model(model, X, y_true, task_id=0, batch_size=64):
+    if model.binary:
+        return eval_model_binary(model, X, y_true, task_id=task_id,
+                                     batch_size=batch_size)
+    else:
+        return eval_model_regression(model, X, y_true, task_id=task_id,
+                                     batch_size=batch_size)
+
+
+def eval_model_regression(model, X, y_true, task_id=0, batch_size=64):
     predicted = predict_model(model, X, task_id, batch_size).data.numpy()
     predicted = predicted.reshape([-1])
-    mse, rank_corr = 0, float('nan')
-    if label_type == "scalar":
-        mse = mean_squared_error(y_true, predicted)
-    else:
-        print("Warning: Only scalar error evaluation "
-              "(using MSE) implemented so far.")
+    rmse, rank_corr = 0, float('nan')
+    rmse = math.sqrt(mean_squared_error(y_true, predicted))
     if predicted.sum() > 0:
         rank_corr = spearmanr(y_true, predicted)[0]
-    return mse, rank_corr
+    return rmse, rank_corr, predicted
+
+
+def eval_model_binary(model, X, y_true, task_id=0, batch_size=64):
+    predicted = predict_model(model, X, task_id, batch_size).data.numpy()
+    predicted = predicted.reshape([-1]) >= 0
+    f1 = f1_score(y_true, predicted)
+    if predicted.sum() > 0:
+        rank_corr = spearmanr(y_true, predicted)[0]
+    else:
+        rank_corr = float('nan')
+    return f1, rank_corr, predicted
 
 
 def predict_model(model, data, task_id=0, batch_size=64):
-    batcher = Batcher(data, batch_size)
+    batcher = Batcher(len(data), batch_size)
     predicted = []
-    for batch, size, start, end in batcher:
-        d = prepare(batch)
+    for size, start, end in batcher:
+        d = prepare(data[start:end])
         model.eval()
         pred = model(d)[task_id].cpu()
         predicted.extend(pred)

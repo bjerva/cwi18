@@ -3,7 +3,8 @@ from torch import nn
 
 class MTMLP(nn.Module):
 
-    def __init__(self, input_dim, hidden_dims, output_dims):
+    def __init__(self, input_dim, hidden_dims, output_dims, binary=False):
+        self.binary = binary
         super(MTMLP, self).__init__()
         if type(hidden_dims) == int:
             print("Warning: you passed a single integer ({}) as argument "
@@ -35,6 +36,7 @@ class MTMLP(nn.Module):
         # layers in self.forward())
         self.tanh = nn.Tanh()
         self.dropout = nn.Dropout(0.2)
+        # self.dropout = nn.Dropout(0.0)
 
         # Initialize all weights
         for weight_matrix in self.all_parameters:
