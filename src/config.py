@@ -9,4 +9,13 @@ RESOURCES_ES = RESOURCES / "es"
 RESOURCES_DE = RESOURCES / "de"
 RESOURCES_FR = RESOURCES / "fr"
 
-LM_EN = RESOURCES_EN / "lm_giga_64k_nvp_2gram.arpa"
+LMS = {
+    "en": RESOURCES_EN / "lm_giga_64k_nvp_2gram.arpa"
+}
+
+EMBEDDINGS = {
+    "en": RESOURCES_EN / "en.wiki.bpe.op25000.d200.w2v.txt",
+    "es": RESOURCES_ES / "es.wiki.bpe.op25000.d200.w2v.txt",
+    "de": RESOURCES_DE / "de.wiki.bpe.op25000.d200.w2v.txt",
+    "fr": RESOURCES_DE / "fr.wiki.bpe.op25000.d200.w2v.txt"
+}

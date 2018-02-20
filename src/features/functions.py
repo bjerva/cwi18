@@ -2,10 +2,13 @@ import os
 import pickle
 
 import scipy.sparse
-
+from sklearn.metrics.pairwise import cosine_similarity
 from features.vocab import Vocab
-from util.io import TARGET, NATIVE_SEEN
+from util.io import TARGET, NATIVE_SEEN, SENTENCE
 import kenlm
+from util.bpe import infer_spaces
+from tqdm import tqdm
+import config
 
 
 class FeatureFunction:
@@ -117,8 +120,8 @@ class Features:
 
 class Frequency(FeatureFunction):
 
-    def __init__(self, name="frequency", language_model=None):
-        self.lm = self.load_lm(language_model)
+    def __init__(self, name="frequency", language=None):
+        self.lm = self.load_lm(config.LMS[language])
         super().__init__(name)
 
     @staticmethod
@@ -126,14 +129,12 @@ class Frequency(FeatureFunction):
         return kenlm.LanguageModel(str(path))
 
     def process(self, data):
-        return list(map(
-            lambda x: self.lm.score(x[TARGET], bos=False, eos=False),
-            data))
+        return [self.lm.score(x[TARGET], bos=False, eos=False) for x in data]
 
 
 class CharacterPerplexity(FeatureFunction):
-    def __init__(self, name="char_ppl", language_model=None):
-        self.lm = self.load_lm(language_model)
+    def __init__(self, name="char_ppl", language=None):
+        self.lm = self.load_lm(config.LMS[language])
         super().__init__(name)
 
     @staticmethod
@@ -141,9 +142,7 @@ class CharacterPerplexity(FeatureFunction):
         return kenlm.LanguageModel(str(path))
 
     def process(self, data):
-        return list(map(
-            lambda x: self.lm.perplexity(" ".join(list(x[TARGET]))),
-            data))
+        return [self.lm.perplexity(" ".join(list(x[TARGET]))) for x in data]
 
 
 class WordForm(FeatureFunction):
@@ -151,7 +150,7 @@ class WordForm(FeatureFunction):
         super().__init__(name)
 
     def process(self, data):
-        return list(map(lambda x: x[TARGET], data))
+        return [x[TARGET] for x in data]
 
 
 class WordLength(FeatureFunction):
@@ -159,7 +158,7 @@ class WordLength(FeatureFunction):
         super().__init__(name)
 
     def process(self, data):
-        return list(map(lambda x: len(x[TARGET]), data))
+        return [len(x[TARGET]) for x in data]
 
 
 class PartOfSpeech(FeatureFunction):
@@ -175,7 +174,49 @@ class NativeAnnotatorsNumber(FeatureFunction):
         super().__init__(name)
 
     def process(self, data):
-        return list(map(lambda x: int(x[NATIVE_SEEN]), data))
+        return [int(x[NATIVE_SEEN]) for x in data]
+
+
+class TargetSentenceSimilarity(FeatureFunction):
+    def __init__(self, name="target_sentence_sim", language=None):
+        from gensim.models import KeyedVectors
+        self.model = KeyedVectors.load_word2vec_format(
+            str(config.EMBEDDINGS[language]))
+        self.vocabulary = self.model.vocab.keys()
+        super().__init__(name)
+
+    def get_avg_embedding(self, item):
+        subwords = infer_spaces(item, self.vocabulary)
+        subwords_filtered = [sw for sw in subwords if sw in self.model]
+        return self.model[subwords_filtered].mean(axis=0).reshape(-1, 1)
+
+    def process(self, data):
+        # return [cosine_similarity(self.get_avg_embedding(x[SENTENCE]),
+        #                           self.get_avg_embedding(x[TARGET]))
+        #         for x in data]
+        sims = []
+        for x in tqdm(data):
+            sims.append(cosine_similarity(self.get_avg_embedding(x[SENTENCE]),
+                                          self.get_avg_embedding(x[TARGET])))
+        return sims
+
+        # similarities = []
+        # for x in tqdm(data):
+        #     try:
+        #         sentence_emb_avg = self.get_avg_embedding(x[SENTENCE])
+        #         target_emb_avg = self.get_avg_embedding(x[TARGET])
+        #         similarities.append(cosine_similarity(sentence_emb_avg.reshape(-1, 1),
+        #                                               target_emb_avg.reshape(-1, 1)))
+        #     except ValueError:
+        #         print(x[SENTENCE], type(x[SENTENCE]))
+        #         spaces = infer_spaces(x[SENTENCE]+x[TARGET], self.vocabulary)
+        #         print(spaces)
+        #         for sp in spaces:
+        #             print(sp, sp in self.model.vocab)
+        #             print(self.model[sp], self.model[spaces])
+        #
+        #         raise Exception
+        # return similarities
 
 
 class Dummy(FeatureFunction):
