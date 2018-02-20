@@ -34,7 +34,7 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
     if batches_per_epoch is None:
         batches_per_epoch = sum([len(dataset[0]) for dataset
                                  in training_datasets]) // batch_size
-    print("Batches per epoch:", batches_per_epoch)
+    # print("Batches per epoch:", batches_per_epoch)
     batchers = []
 
     for training_dataset in training_datasets:
@@ -86,12 +86,11 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         if dev is not None:
             X_dev, y_dev = dev
             METRIC_NAME = "F1" if model.binary else "RMSE"
-            metric, corr, _ = eval_model(model, X_dev, y_dev, task_id=task_id,
+            score, corr, _ = eval_model(model, X_dev, y_dev, task_id=task_id,
                                       batch_size=batch_size)
-            print("Epoch Dev {} {:1.4f}".format(METRIC_NAME, metric))
-            # print("Epoch Dev Corr {:1.4f}".format(corr))
+            # print("Epoch Dev {} {:1.4f}".format(METRIC_NAME, score))
 
-            if early_stopping is not None and early_stopping(model, metric):
+            if early_stopping is not None and early_stopping(model, score):
                 early_stopping.set_best_state(model)
                 break
 
