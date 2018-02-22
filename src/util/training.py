@@ -1,8 +1,36 @@
 import torch
+import random
+import numpy as np
+
+
+def split_train_dev(all_data, dev_lang):
+    train_data = []
+    dev_data = []
+    for lang_idx in range(len(all_data)):
+        if not lang_idx == dev_lang:
+            train_data.append(all_data[lang_idx])
+        else:
+            train_data.append([])
+            dev_lang_data = all_data[dev_lang]
+            total_size = len(dev_lang_data[0])
+            train_indices = random.sample(range(total_size), int(total_size*.8))
+            x_tr, y_tr, x_dv, y_dv = [], [], [], []
+            for i in range(total_size):
+                x, y = dev_lang_data[0][i], dev_lang_data[1][i]
+                if i in train_indices:
+                    x_tr.append(x)
+                    y_tr.append(y)
+                else:
+                    x_dv.append(x)
+                    y_dv.append(y)
+            train_data[lang_idx] = np.array(x_tr), np.array(y_tr)
+            dev_data = np.array(x_dv), np.array(y_dv)
+    return train_data, dev_data
 
 
 class EarlyStopping:
-    def __init__(self, path_prefix, patience=8, low_is_good=True, verbose=False):
+    def __init__(self, path_prefix, patience=8, low_is_good=True,
+                 verbose=False):
         self.patience = patience
         self.best_model = None
         self.best_score = None

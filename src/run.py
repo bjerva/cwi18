@@ -7,11 +7,13 @@ from sklearn.metrics import mean_absolute_error
 from scipy.stats import spearmanr
 from util.batching import Batcher, prepare, prepare_with_labels
 from sklearn.metrics import f1_score
+import numpy as np
 
 
 def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
                 dev=None, clip=None, early_stopping=None, l2=1e-5,
-                lr_schedule=None, batches_per_epoch=None, shuffle_data=True):
+                lr_schedule=None, batches_per_epoch=None, shuffle_data=True,
+                loss_weights=None):
     """
     Trains a model
     :param model:
@@ -26,8 +28,12 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
     :param lr_schedule:
     :param batches_per_epoch:
     :param shuffle_data:
+    :param loss_weights:
     :return:
     """
+    if loss_weights is None:
+        loss_weights = np.ones(len(training_datasets))
+
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2)
 
     if batches_per_epoch is None:
@@ -64,6 +70,7 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
                 loss = torch.nn.functional.binary_cross_entropy(logits, gold)
             else:
                 loss = (logits - gold).pow(2).sum()
+            loss = loss * loss_weights[task_id]
             loss.backward()
 
             epoch_loss += loss.cpu()
