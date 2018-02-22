@@ -3,10 +3,9 @@ import random
 import torch
 from tqdm import tqdm
 from sklearn.utils import shuffle
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
 from scipy.stats import spearmanr
-from util.batching import Batcher, prepare, prepare_with_labels, splen
-import math
+from util.batching import Batcher, prepare, prepare_with_labels
 from sklearn.metrics import f1_score
 
 
@@ -85,7 +84,7 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         #     model, X, y, task_id=task_id, batch_size=batch_size)[0]))
         if dev is not None:
             X_dev, y_dev = dev
-            METRIC_NAME = "F1" if model.binary else "RMSE"
+            METRIC_NAME = "F1" if model.binary else "MAE"
             score, corr, _ = eval_model(model, X_dev, y_dev, task_id=task_id,
                                       batch_size=batch_size)
             # print("Epoch Dev {} {:1.4f}".format(METRIC_NAME, score))
@@ -110,11 +109,11 @@ def eval_model(model, X, y_true, task_id=0, batch_size=64):
 def eval_model_regression(model, X, y_true, task_id=0, batch_size=64):
     predicted = predict_model(model, X, task_id, batch_size).data.numpy()
     predicted = predicted.reshape([-1])
-    rmse, rank_corr = 0, float('nan')
-    rmse = math.sqrt(mean_squared_error(y_true, predicted))
+    mae, rank_corr = 0, float('nan')
+    mae = mean_absolute_error(y_true, predicted)
     if predicted.sum() > 0:
         rank_corr = spearmanr(y_true, predicted)[0]
-    return rmse, rank_corr, predicted
+    return mae, rank_corr, predicted
 
 
 def eval_model_binary(model, X, y_true, task_id=0, batch_size=64):

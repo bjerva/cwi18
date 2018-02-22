@@ -9,6 +9,7 @@ import kenlm
 from util.bpe import infer_spaces
 from tqdm import tqdm
 import config
+import json
 
 
 class FeatureFunction:
@@ -34,6 +35,12 @@ class FeatureFunction:
 
     def process(self, data):
         raise NotImplementedError("Abstract feature function")
+
+    def __repr__(self):
+        return self.name
+
+    def toJSON(self):
+        return json.dumps(self.name)
 
 
 class Features:
@@ -122,7 +129,7 @@ class Frequency(FeatureFunction):
 
     def __init__(self, name="frequency", language=None):
         self.lm = self.load_lm(config.LMS[language])
-        super().__init__(name)
+        super(Frequency, self).__init__(name)
 
     @staticmethod
     def load_lm(path):
@@ -130,6 +137,9 @@ class Frequency(FeatureFunction):
 
     def process(self, data):
         return [self.lm.score(x[TARGET], bos=False, eos=False) for x in data]
+
+    def toJSON(self):
+        return self.name
 
 
 class CharacterPerplexity(FeatureFunction):

@@ -2,7 +2,7 @@ import torch
 
 
 class EarlyStopping:
-    def __init__(self, name, patience=8, low_is_good=True, verbose=False):
+    def __init__(self, path_prefix, patience=8, low_is_good=True, verbose=False):
         self.patience = patience
         self.best_model = None
         self.best_score = None
@@ -10,7 +10,7 @@ class EarlyStopping:
         self.best_epoch = 0
         self.epoch = 0
         self.low_is_good = low_is_good
-        self.name = name
+        self.path_prefix = path_prefix
         self.verbose = verbose
 
     def __call__(self, model, score):
@@ -20,8 +20,7 @@ class EarlyStopping:
             self.best_score = score
 
         if self.new_best(score):
-            torch.save(model.state_dict(),
-                       "models/{0}.best.save".format(self.name))
+            torch.save(model.state_dict(), self.path_prefix+"_best.model")
             self.best_score = score
             self.best_epoch = self.epoch
             return False
@@ -41,5 +40,4 @@ class EarlyStopping:
 
     def set_best_state(self, model):
         print("Loading weights from epoch {0}".format(self.best_epoch))
-        model.load_state_dict(
-            torch.load("models/{0}.best.save".format(self.name)))
+        model.load_state_dict(torch.load(self.path_prefix+"_best.model"))

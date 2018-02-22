@@ -10,7 +10,17 @@ RESOURCES_DE = RESOURCES / "de"
 RESOURCES_FR = RESOURCES / "fr"
 
 LMS = {
-    "en": RESOURCES_EN / "lm_giga_64k_nvp_2gram.arpa"
+    "en": RESOURCES_EN / "en.wiki.small.arpa",
+    "es": RESOURCES_ES / "es.wiki.arpa",
+    "de": RESOURCES_DE / "de.wiki.arpa",
+    "fr": RESOURCES_DE / "fr.wiki.arpa"
+}
+
+CHAR_LMS = {
+    "en": RESOURCES_EN / "en.wiki.small.chars.arpa",
+    "es": RESOURCES_ES / "es.wiki.chars.arpa",
+    "de": RESOURCES_DE / "de.wiki.chars.arpa",
+    "fr": RESOURCES_DE / "fr.wiki.chars.arpa"
 }
 
 EMBEDDINGS = {
