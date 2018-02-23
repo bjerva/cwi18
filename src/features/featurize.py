@@ -10,7 +10,6 @@ def featurize(dataset, feature_functions, binary=False, scale_features=True,
         func.name: func.process(dataset)
         for func in feature_functions
     }
-    print(len(dataset))
     # transform to single dict per example
     per_example_dicts = [
         {key: values[i] for key, values in feature2values.items()}

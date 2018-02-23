@@ -17,10 +17,10 @@ ES = "es"
 FR = "fr"
 
 
-def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1, binary=False,
-                   binary_vote_threshold=0.0, hidden_layers=(10, 10),
-                   max_epochs=30, batch_size=64, lr=3e-2, dropout=0.2,
-                   patience=5,
+def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
+                   binary=False, binary_vote_threshold=0.0,
+                   hidden_layers=(10, 10), max_epochs=30, batch_size=64,
+                   lr=3e-2, dropout=0.2, patience=5,
                    scale_features=True, aux_task_weight=1.0,
                    concatenate_train_data=False, share_input=False):
     # Logging
@@ -54,6 +54,8 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1, binar
         for lang in train_langs
     }
 
+    print(feature_functions)
+
     # Featurize data, each element in the list is a tuple (X, y)
     featurized_data = [
         featurize(all_data[lang], feature_functions[lang], binary=binary,
@@ -80,6 +82,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1, binar
         dev_lang_index = 0
 
     X_dv, y_dv = data_dv
+    print(X_dv.shape)
 
     # Perform specified number of random restarts, each restart works as
     # voter in ensemble
@@ -140,18 +143,16 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1, binar
     exp_log.write(final_eval+"\n")
     exp_log.close()
 
-funcs = {EN: [Frequency, CharacterPerplexity],
-         DE: [Frequency, CharacterPerplexity],
-         ES: [Frequency, CharacterPerplexity],
-         # ES: [Frequency],
-         FR: [Frequency, CharacterPerplexity]}
+funcs = {EN: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
+         DE: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
+         ES: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
+         FR: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity]}
 
-run_experiment("test111111", [DE, ES], DE, funcs, binary=True,
-               restarts=20, max_epochs=100, lr=3e-3, dropout=0.95,
-               binary_vote_threshold=0.0, patience=20, aux_task_weight=.5,
+run_experiment("test4", [DE, EN, ES], DE, funcs, binary=True,
+               restarts=10, max_epochs=100, lr=3e-3, dropout=0.2,
+               binary_vote_threshold=0.0, patience=20, aux_task_weight=.3,
                concatenate_train_data=False,
-               hidden_layers=[10], share_input=True)
-#
+               hidden_layers=[10,10], share_input=True)
 
 RESTARTS = [5, 10]
 PATIENCE = [10, 20]
@@ -184,7 +185,7 @@ TRAIN_DATA = [[DE], [DE, EN], [DE, ES], [DE, EN, ES]]
 #                                        binary=True, restarts=restarts,
 #                                        max_epochs=200, lr=lr, dropout=dropout,
 #                                        binary_vote_threshold=bvt,
-#                                        patience=patience,
+#                                        patience=patience,target_sentence_sim-Train.txt
 #                                        aux_task_weight=aux_weight,
 #                                        concatenate_train_data=concat,
 #                                        hidden_layers=hidden, share_input=share)

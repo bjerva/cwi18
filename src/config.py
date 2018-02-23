@@ -1,7 +1,5 @@
 from pathlib import Path
 
-RANDOM_SEED = 42
-
 PATH = Path('..')
 RESOURCES = PATH / "resources"
 RESOURCES_EN = RESOURCES / "en"
@@ -13,19 +11,19 @@ LMS = {
     "en": RESOURCES_EN / "en.wiki.small.arpa",
     "es": RESOURCES_ES / "es.wiki.arpa",
     "de": RESOURCES_DE / "de.wiki.arpa",
-    "fr": RESOURCES_DE / "fr.wiki.arpa"
+    "fr": RESOURCES_FR / "fr.wiki.arpa"
 }
 
 CHAR_LMS = {
     "en": RESOURCES_EN / "en.wiki.small.chars.arpa",
     "es": RESOURCES_ES / "es.wiki.chars.arpa",
     "de": RESOURCES_DE / "de.wiki.chars.arpa",
-    "fr": RESOURCES_DE / "fr.wiki.chars.arpa"
+    "fr": RESOURCES_FR / "fr.wiki.chars.arpa"
 }
 
 EMBEDDINGS = {
     "en": RESOURCES_EN / "en.wiki.bpe.op25000.d200.w2v.txt",
     "es": RESOURCES_ES / "es.wiki.bpe.op25000.d200.w2v.txt",
     "de": RESOURCES_DE / "de.wiki.bpe.op25000.d200.w2v.txt",
-    "fr": RESOURCES_DE / "fr.wiki.bpe.op25000.d200.w2v.txt"
+    "fr": RESOURCES_FR / "fr.wiki.bpe.op25000.d200.w2v.txt"
 }

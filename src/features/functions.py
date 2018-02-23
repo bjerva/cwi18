@@ -2,14 +2,14 @@ import os
 import pickle
 
 import scipy.sparse
-from sklearn.metrics.pairwise import cosine_similarity
 from features.vocab import Vocab
-from util.io import TARGET, NATIVE_SEEN, SENTENCE
+from util.io import TARGET, NATIVE_SEEN, SENTENCE, TARGET_SENT_SIMILARITY
 import kenlm
 from util.bpe import infer_spaces
 from tqdm import tqdm
 import config
 import json
+from scipy import spatial
 
 
 class FeatureFunction:
@@ -129,7 +129,7 @@ class Frequency(FeatureFunction):
 
     def __init__(self, name="frequency", language=None):
         self.lm = self.load_lm(config.LMS[language])
-        super(Frequency, self).__init__(name)
+        super().__init__(name)
 
     @staticmethod
     def load_lm(path):
@@ -144,7 +144,7 @@ class Frequency(FeatureFunction):
 
 class CharacterPerplexity(FeatureFunction):
     def __init__(self, name="char_ppl", language=None):
-        self.lm = self.load_lm(config.LMS[language])
+        self.lm = self.load_lm(config.CHAR_LMS[language])
         super().__init__(name)
 
     @staticmethod
@@ -201,32 +201,20 @@ class TargetSentenceSimilarity(FeatureFunction):
         return self.model[subwords_filtered].mean(axis=0).reshape(-1, 1)
 
     def process(self, data):
-        # return [cosine_similarity(self.get_avg_embedding(x[SENTENCE]),
-        #                           self.get_avg_embedding(x[TARGET]))
-        #         for x in data]
         sims = []
         for x in tqdm(data):
-            sims.append(cosine_similarity(self.get_avg_embedding(x[SENTENCE]),
-                                          self.get_avg_embedding(x[TARGET])))
+            cos = spatial.distance.cosine(self.get_avg_embedding(x[SENTENCE]),
+                                          self.get_avg_embedding(x[TARGET]))
+            sims.append(1-cos)
         return sims
 
-        # similarities = []
-        # for x in tqdm(data):
-        #     try:
-        #         sentence_emb_avg = self.get_avg_embedding(x[SENTENCE])
-        #         target_emb_avg = self.get_avg_embedding(x[TARGET])
-        #         similarities.append(cosine_similarity(sentence_emb_avg.reshape(-1, 1),
-        #                                               target_emb_avg.reshape(-1, 1)))
-        #     except ValueError:
-        #         print(x[SENTENCE], type(x[SENTENCE]))
-        #         spaces = infer_spaces(x[SENTENCE]+x[TARGET], self.vocabulary)
-        #         print(spaces)
-        #         for sp in spaces:
-        #             print(sp, sp in self.model.vocab)
-        #             print(self.model[sp], self.model[spaces])
-        #
-        #         raise Exception
-        # return similarities
+
+class PrecomputedTargetSentenceSimilarity(FeatureFunction):
+    def __init__(self, name="precomputed_target_sentence_sim", language=None):
+        super().__init__(name)
+
+    def process(self, data):
+        return [float(x[TARGET_SENT_SIMILARITY]) for x in data]
 
 
 class Dummy(FeatureFunction):

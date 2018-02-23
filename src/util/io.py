@@ -8,16 +8,19 @@ END = 3
 TARGET = 4
 NATIVE_SEEN = 5
 FOREIGN_SEEN = 6
-NATIVE_COMPLEX = 7
-FOREIGN_COMPLEX = 8
-LABEL_ANY = 9
-LABEL_FRACTION = 10
+TARGET_SENT_SIMILARITY = 7
+NATIVE_COMPLEX = 8
+FOREIGN_COMPLEX = 9
+LABEL_ANY = 10
+LABEL_FRACTION = 11
 
 DATASET_FIELDS_TRAIN = [ID, SENTENCE, START, END, TARGET, NATIVE_SEEN,
-                        FOREIGN_SEEN, NATIVE_COMPLEX, FOREIGN_COMPLEX,
+                        FOREIGN_SEEN, TARGET_SENT_SIMILARITY,
+                        NATIVE_COMPLEX, FOREIGN_COMPLEX,
+
                         LABEL_ANY, LABEL_FRACTION]
 DATASET_FIELDS_TEST = [ID, SENTENCE, START, END, TARGET, NATIVE_SEEN,
-                       FOREIGN_SEEN]
+                       FOREIGN_SEEN, TARGET_SENT_SIMILARITY]
 
 FIELD_SEPARATOR = "\t"
 
@@ -44,7 +47,8 @@ class Dataset(list):
 def get_data(lang, split):
     # dataset = Dataset()
     dataset = []
-    dataset_files = glob.glob("../data/{}/*{}.tsv".format(lang, split))
+    dataset_files = glob.glob("../data_augmented/{}/*{}.tsv".format(lang,
+                                                                    split))
     print("Reading files: ", dataset_files)
     for df in dataset_files:
         with open(df) as f:
