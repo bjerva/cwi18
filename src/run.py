@@ -49,7 +49,6 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
         batcher = Batcher(len(X), batch_size)
         batchers.append(batcher)
 
-    X, y = None, None
     for epoch in tqdm(range(epochs)):
         epoch_loss = 0
         epoch_data_size = 0
@@ -62,8 +61,8 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
                                           model.binary)
             model.train()
             optimizer.zero_grad()
-            logits_all_tasks = model(d)
-            logits = logits_all_tasks[task_id]
+            logits = model(d, input_task_id=task_id, output_all=False,
+                           train_mode=True)
             gold = gold.view([size, 1])
             if model.binary:
                 logits = torch.nn.functional.sigmoid(logits)
@@ -140,6 +139,6 @@ def predict_model(model, data, task_id=0, batch_size=64):
     for size, start, end in batcher:
         d = prepare(data[start:end])
         model.eval()
-        pred = model(d)[task_id].cpu()
+        pred = model(d, input_task_id=task_id, output_all=False).cpu()
         predicted.extend(pred)
     return torch.stack(predicted)

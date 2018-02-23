@@ -31,3 +31,20 @@ def featurize(dataset, feature_functions, binary=False, scale_features=True,
         return X, y, v
     else:
         return X, y
+
+
+def feature_compatibility(functions, train_langs):
+    relevant_functions = [functions[lang] for lang in train_langs]
+    print(relevant_functions)
+    for i in range(len(train_langs)):
+        if not len(relevant_functions[i-1]) == len(relevant_functions[i]):
+            print("Fetaure functions don't have the same lengths!")
+            return False
+    for j in range(len(relevant_functions[0])):
+        for i in range(len(train_langs)):
+            if not relevant_functions[i][j].__name__ \
+                    == relevant_functions[i-1][j].__name__:
+                print("Feature functions at same positions don't have the "
+                      "same names across languages")
+                return False
+    return True
