@@ -121,7 +121,8 @@ funcs = {EN: common_funcs,
          ES: common_funcs,
          FR: common_funcs}
 
-run_experiment("bl-reg1-enonly", [DE], DE, funcs, binary=True,
+for dvlang in [EN, ES, DE]:
+    run_experiment("bl-xx", [dvlang], dvlang, funcs, binary=True,
 
                concatenate_train_data=False)
 

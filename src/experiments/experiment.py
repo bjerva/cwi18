@@ -18,7 +18,7 @@ FR = "fr"
 
 
 def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
-                   binary=False, binary_vote_threshold=0.0,
+                   binary=False, binary_vote_threshold=None,
                    hidden_layers=(10, 10), max_epochs=30, batch_size=64,
                    lr=3e-2, dropout=0.2, patience=5,
                    scale_features=True, aux_task_weight=1.0,
@@ -39,6 +39,10 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
         exp_log.write("{}{}{}\n".format(k, " "*(max_len_key+4-len(k)), args[k]))
     exp_log.write("\n")
 
+    all_langs = train_langs
+    if dev_lang not in train_langs:
+        all_langs.append(dev_lang)
+
     # Read training data for each training language
     if official_dev:
         all_data = {lang:get_data(lang, "Train") + get_data(lang, "Dev")
@@ -57,7 +61,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
     feature_functions = {
         lang: feature_functions_common + [function(language=lang)
                                           for function in functions[lang]]
-        for lang in train_langs
+        for lang in all_langs
     }
 
     print(feature_functions)
@@ -69,7 +73,8 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
         for lang in train_langs
     ]
 
-    dev_lang_index = train_langs.index(dev_lang)
+    dev_lang_index = train_langs.index(dev_lang) \
+        if dev_lang in train_langs else 0
     if official_dev:
         data_tr = featurized_data
         data_dv = featurize(get_data(dev_lang, "Dev"),
@@ -133,7 +138,20 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
     # Get final votes and compute scores
     votes = np.array(votes)
     if binary:
-        # Rule: if any classifier votes yes, take yes
+        if binary_vote_threshold is None:
+            print("Getting optimal threshold...")
+            best_score = 0.0
+            best_threshold = 0.0
+            for binary_vote_threshold in np.arange(0.0, 1.0, 0.1):
+                final_votes = np.mean(votes, axis=0) > binary_vote_threshold
+                score = f1_score(y_dv, final_votes)
+                if score > best_score:
+                    best_score = score
+                    best_threshold = binary_vote_threshold
+            msg = "Best threshold is {}".format(best_threshold)
+            print(msg)
+            exp_log.write(msg+'\n')
+            binary_vote_threshold = best_threshold
         final_votes = np.mean(votes, axis=0) > binary_vote_threshold
         score = f1_score(y_dv, final_votes)
         recall = recall_score(y_dv, final_votes)
@@ -171,11 +189,11 @@ funcs = {EN: common_funcs,
          ES: common_funcs,
          FR: common_funcs}
 
-run_experiment("best3", [DE,EN,ES], DE, funcs, binary=True,
-               restarts=5, max_epochs=1000, lr=0.03, dropout=0.33,
-               binary_vote_threshold=0.0, patience=10, aux_task_weight=.5,
-               concatenate_train_data=False, batch_size=64,
-               hidden_layers=[10,10], share_input=True, official_dev=True)
+run_experiment("all2de-deep-nobvt-0", [ES,EN,DE], DE, funcs, binary=True,
+               restarts=10, max_epochs=1000, lr=0.03, dropout=0.33,
+               binary_vote_threshold=None, patience=20, aux_task_weight=.5,
+               concatenate_train_data=True, batch_size=64,
+               hidden_layers=[20,30,20], share_input=True, official_dev=True)
 
 RESTARTS = [5, 10]
 PATIENCE = [10, 20]

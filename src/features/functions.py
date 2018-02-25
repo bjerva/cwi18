@@ -249,8 +249,6 @@ class StemSurfaceLenghtDist(FeatureFunction):
         super().__init__(name)
 
     def process(self, data):
-        for x in data[:50]:
-            print(x[TARGET], max([len(w) - len(self.stemmer.stem(w)) for w in x[TARGET].split()]))
         return [
             # maximum difference between surface form and stem for w in target
             max([len(w) - len(self.stemmer.stem(w.lower()))
