@@ -15,6 +15,7 @@ def featurize(dataset, feature_functions, binary=False, scale_features=True,
         {key: values[i] for key, values in feature2values.items()}
         for i in range(len(dataset))
     ]
+    # print(per_example_dicts)
     v = DictVectorizer()
     X = v.fit_transform(per_example_dicts).todense()
 

@@ -143,16 +143,25 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
     exp_log.write(final_eval+"\n")
     exp_log.close()
 
-funcs = {EN: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
-         DE: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
-         ES: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
-         FR: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity]}
+common_funcs = [
+    Frequency,
+    CharacterPerplexity,
+    PrecomputedTargetSentenceSimilarity,
+    Synsets,
+    Hypernyms,
+    NativeAnnotatorsNumber
+]
 
-run_experiment("test4", [DE, EN, ES], DE, funcs, binary=True,
-               restarts=10, max_epochs=100, lr=3e-3, dropout=0.2,
-               binary_vote_threshold=0.0, patience=20, aux_task_weight=.3,
+funcs = {EN: common_funcs,
+         DE: common_funcs,
+         ES: common_funcs,
+         FR: common_funcs}
+
+run_experiment("test21", [DE], DE, funcs, binary=True,
+               restarts=10, max_epochs=1000, lr=1e-3, dropout=0.2,
+               binary_vote_threshold=0.0, patience=30, aux_task_weight=.3,
                concatenate_train_data=False,
-               hidden_layers=[10,10], share_input=True)
+               hidden_layers=[10,10,10], share_input=True)
 
 RESTARTS = [5, 10]
 PATIENCE = [10, 20]

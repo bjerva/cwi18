@@ -27,3 +27,12 @@ EMBEDDINGS = {
     "de": RESOURCES_DE / "de.wiki.bpe.op25000.d200.w2v.txt",
     "fr": RESOURCES_FR / "fr.wiki.bpe.op25000.d200.w2v.txt"
 }
+
+DE2EN = RESOURCES_DE / "de2en.clean.txt"
+
+WORD_LIST = {
+    "en": RESOURCES_EN / "en.wiki.bpe.op25000.d200.w2v.txt",
+    "es": RESOURCES_ES / "es.wiki.bpe.op25000.d200.w2v.txt",
+    "de": RESOURCES_DE / "de.wiki.bpe.op25000.d200.w2v.txt",
+    "fr": RESOURCES_FR / "fr.wiki.bpe.op25000.d200.w2v.txt"
+}

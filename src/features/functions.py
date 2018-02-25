@@ -10,6 +10,22 @@ from tqdm import tqdm
 import config
 import json
 from scipy import spatial
+import numpy as np
+from nltk.corpus import wordnet as wn
+
+
+def load_de2en(path):
+    de2en = {}
+    for line in open(str(path)):
+        line = line.strip()
+        if len(line) == 0 or line.startswith("#"):
+            continue
+        line = line.split("\t")
+        if len(line) > 1:
+            de2en[line[0]] = line[1]
+    return de2en
+
+de2en = load_de2en(config.DE2EN)
 
 
 class FeatureFunction:
@@ -142,6 +158,74 @@ class Frequency(FeatureFunction):
         return self.name
 
 
+class Synsets(FeatureFunction):
+    def __init__(self, name="synsets", language=None):
+        lang2wn_lang = {"en": "eng", "es": "spa", "fr": "fra",  "de": "eng"}
+        self.lang = language
+        self.wn_lang = lang2wn_lang[language]
+        super().__init__(name)
+
+    def get_synsets(self, item):
+        if self.lang == "de":
+            # print(item, de2en.get(item))
+            item = de2en.get(item, "")
+        return wn.synsets(item, lang=self.wn_lang)
+
+    def process(self, data):
+        return [
+            # mean synsets length
+            np.array([len(self.get_synsets(w)) for w in x[TARGET].split()]).mean()
+            for x in data]
+
+
+class Hypernyms(FeatureFunction):
+    def __init__(self, name="hypernyms", language=None):
+        lang2wn_lang = {"en": "eng", "es": "spa", "fr": "fra", "de": "eng"}
+        self.lang = language
+        self.wn_lang = lang2wn_lang[language]
+        super().__init__(name)
+
+    def get_hypernym_chain(self, item):
+        if self.lang == "de":
+            item = de2en.get(item, "")
+        hc = []
+        synsets = wn.synsets(item, lang=self.wn_lang)
+        if synsets:
+            synset = synsets[0]
+            while synset:
+                synset = self.get_hypernym(synset)
+                hc.append(synset)
+        return hc
+
+    def get_hypernym(self, synset):
+        hypernyms = synset.hypernyms()
+        if hypernyms:
+            return hypernyms[0]
+        else:
+            return None
+
+    def process(self, data):
+        return [
+            # mean hypernym chain length
+            np.array([len(self.get_hypernym_chain(w)) for w in x[TARGET].split()]).mean()
+            for x in data]
+
+
+class WordList(FeatureFunction):
+    def __init__(self, name="word_list", language=None):
+        self.word_list = self.load_word_list(config.WORD_LIST[language])
+        super().__init__(name)
+
+    def load_word_list(self, path):
+        return set([line.strip() for line in open(path)])
+
+    def process(self, data):
+        return [
+            # fraction of words in target that are in word list
+            np.array([w in self.word_list for w in x[TARGET].split()]).mean()
+            for x in data]
+
+
 class CharacterPerplexity(FeatureFunction):
     def __init__(self, name="char_ppl", language=None):
         self.lm = self.load_lm(config.CHAR_LMS[language])
@@ -152,7 +236,8 @@ class CharacterPerplexity(FeatureFunction):
         return kenlm.LanguageModel(str(path))
 
     def process(self, data):
-        return [self.lm.perplexity(" ".join(list(x[TARGET]))) for x in data]
+        return [min(50, self.lm.perplexity(" ".join(list(x[TARGET]))))
+                for x in data]
 
 
 class WordForm(FeatureFunction):
@@ -180,7 +265,7 @@ class PartOfSpeech(FeatureFunction):
 
 
 class NativeAnnotatorsNumber(FeatureFunction):
-    def __init__(self, name="native_annotators_number"):
+    def __init__(self, name="native_annotators_number", language=None):
         super().__init__(name)
 
     def process(self, data):
