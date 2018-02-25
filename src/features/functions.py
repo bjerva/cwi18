@@ -12,6 +12,7 @@ import json
 from scipy import spatial
 import numpy as np
 from nltk.corpus import wordnet as wn
+from nltk.stem import SnowballStemmer
 
 
 def load_de2en(path):
@@ -238,6 +239,23 @@ class CharacterPerplexity(FeatureFunction):
     def process(self, data):
         return [min(50, self.lm.perplexity(" ".join(list(x[TARGET]))))
                 for x in data]
+
+
+class StemSurfaceLenghtDist(FeatureFunction):
+    def __init__(self, name="stem_surface_len_dist", language=None):
+        lang2stemmer_lang = {"en": "english", "de": "german",
+                             "fr": "french", "es": "spanish"}
+        self.stemmer = SnowballStemmer(lang2stemmer_lang[language])
+        super().__init__(name)
+
+    def process(self, data):
+        for x in data[:50]:
+            print(x[TARGET], max([len(w) - len(self.stemmer.stem(w)) for w in x[TARGET].split()]))
+        return [
+            # maximum difference between surface form and stem for w in target
+            max([len(w) - len(self.stemmer.stem(w.lower()))
+                 for w in x[TARGET].split()])
+            for x in data]
 
 
 class WordForm(FeatureFunction):
