@@ -105,12 +105,23 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
 
     exp_log.close()
 
-funcs = {EN: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
-         DE: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
-         ES: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity],
-         FR: [Frequency, CharacterPerplexity, PrecomputedTargetSentenceSimilarity]}
 
-run_experiment("bl-reg1-enonly", [EN], EN, funcs, binary=False,
+common_funcs = [
+    Frequency,
+    CharacterPerplexity,
+    PrecomputedTargetSentenceSimilarity,
+    Synsets,
+    Hypernyms,
+    NativeAnnotatorsNumber,
+    StemSurfaceLenghtDist
+]
+
+funcs = {EN: common_funcs,
+         DE: common_funcs,
+         ES: common_funcs,
+         FR: common_funcs}
+
+run_experiment("bl-reg1-enonly", [DE], DE, funcs, binary=True,
 
                concatenate_train_data=False)
 

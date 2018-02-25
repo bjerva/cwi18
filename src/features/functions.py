@@ -258,6 +258,14 @@ class StemSurfaceLenghtDist(FeatureFunction):
             for x in data]
 
 
+class IsLower(FeatureFunction):
+    def __init__(self, name="is_lower", language=None):
+        super().__init__(name)
+
+    def process(self, data):
+        return [x[TARGET].islower() for x in data]
+
+
 class WordForm(FeatureFunction):
     def __init__(self, name="word_length"):
         super().__init__(name)

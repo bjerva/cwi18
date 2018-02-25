@@ -22,7 +22,8 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
                    hidden_layers=(10, 10), max_epochs=30, batch_size=64,
                    lr=3e-2, dropout=0.2, patience=5,
                    scale_features=True, aux_task_weight=1.0,
-                   concatenate_train_data=False, share_input=False):
+                   concatenate_train_data=False, share_input=False,
+                   official_dev=False):
     # Logging
     exp_dir = "../experiments/{}/{}/".format(dev_lang, exp_name)
     model_dir = exp_dir + "models"
@@ -39,8 +40,13 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
     exp_log.write("\n")
 
     # Read training data for each training language
-    all_data = {lang: get_data(lang, "Train") + get_data(lang, "Dev")
-                for lang in train_langs}
+    if official_dev:
+        all_data = {lang:get_data(lang, "Train") + get_data(lang, "Dev")
+                    for lang in train_langs if not lang == dev_lang}
+        all_data[dev_lang] = get_data(dev_lang, "Train")
+    else:
+        all_data = {lang: get_data(lang, "Train") + get_data(lang, "Dev")
+                    for lang in train_langs}
 
     # Feature functions shared across languages
     feature_functions_common = [
@@ -64,8 +70,14 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
     ]
 
     dev_lang_index = train_langs.index(dev_lang)
-    data_tr, data_dv = split_train_dev(featurized_data, dev_lang_index,
-                                       random_splits=False)
+    if official_dev:
+        data_tr = featurized_data
+        data_dv = featurize(get_data(dev_lang, "Dev"),
+                            feature_functions[dev_lang], binary=binary,
+                            scale_features=scale_features)
+    else:
+        data_tr, data_dv = split_train_dev(featurized_data, dev_lang_index,
+                                           random_splits=False, train_rato=0.8)
 
     if share_input:
         if not feature_compatibility(functions, train_langs):
@@ -150,7 +162,8 @@ common_funcs = [
     Synsets,
     Hypernyms,
     NativeAnnotatorsNumber,
-    # StemSurfaceLenghtDist
+    StemSurfaceLenghtDist,
+    IsLower
 ]
 
 funcs = {EN: common_funcs,
@@ -158,11 +171,11 @@ funcs = {EN: common_funcs,
          ES: common_funcs,
          FR: common_funcs}
 
-run_experiment("test27", [DE,EN,ES], DE, funcs, binary=True,
-               restarts=10, max_epochs=1000, lr=1e-3, dropout=0.2,
-               binary_vote_threshold=0.0, patience=30, aux_task_weight=.3,
-               concatenate_train_data=False,
-               hidden_layers=[10,10], share_input=False)
+run_experiment("best3", [DE,EN,ES], DE, funcs, binary=True,
+               restarts=5, max_epochs=1000, lr=0.03, dropout=0.33,
+               binary_vote_threshold=0.0, patience=10, aux_task_weight=.5,
+               concatenate_train_data=False, batch_size=64,
+               hidden_layers=[10,10], share_input=True, official_dev=True)
 
 RESTARTS = [5, 10]
 PATIENCE = [10, 20]

@@ -3,7 +3,7 @@ import random
 import numpy as np
 
 
-def split_train_dev(all_data, dev_lang, random_splits=False):
+def split_train_dev(all_data, dev_lang, random_splits=False, train_rato=0.8):
     train_data = []
     dev_data = []
     for lang_idx in range(len(all_data)):
@@ -18,7 +18,8 @@ def split_train_dev(all_data, dev_lang, random_splits=False):
                                               int(total_size*.8))
             else:
                 # get the first 80% for training
-                train_indices = list(range(total_size))[:int(total_size*.8)]
+                train_indices = list(range(total_size))[:int(total_size *
+                                                             train_rato)]
             x_tr, y_tr, x_dv, y_dv = [], [], [], []
             for i in range(total_size):
                 x, y = dev_lang_data[0][i], dev_lang_data[1][i]
