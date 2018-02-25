@@ -151,9 +151,15 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
         rf.fit(X, y)
         pred = rf.predict(X_dv)
         votes.append(pred)
+        score = f1_score(y_dv, pred) if binary else \
+            mean_absolute_error(y_dv, pred)
+        msg = "Random forest performance: {}".format(score)
+        print(msg)
+        exp_log.write(msg+"\n")
 
     # Get final votes and compute scores
     votes = np.array(votes)
+    print("Votes shape:", votes.shape)
     if binary:
         if binary_vote_threshold is None:
             print("Getting optimal threshold...")
@@ -204,8 +210,8 @@ common_funcs = [
     AdjCount,
     AdvCount,
     AdpCount,
-    PropnCount
-    # NumCount
+    PropnCount,
+    NumCount
 ]
 
 funcs = {EN: common_funcs,
@@ -213,7 +219,7 @@ funcs = {EN: common_funcs,
          ES: common_funcs,
          FR: common_funcs}
 
-run_experiment("all2de-deep-rf-6", [ES,EN,DE], DE, funcs, binary=True,
+run_experiment("all2en-deep-rf-reg-2", [ES,EN,DE], EN, funcs, binary=False,
                restarts=10, max_epochs=1000, lr=0.03, dropout=0.33,
                binary_vote_threshold=None, patience=20, aux_task_weight=.5,
                concatenate_train_data=True, batch_size=64,

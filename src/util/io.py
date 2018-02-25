@@ -15,37 +15,29 @@ N_VERB = 9
 N_ADJ = 10
 N_ADV = 11
 N_ADP = 12
-# N_PROPN = 13
-# N_NUM = 14
-#
-# NATIVE_COMPLEX = 15
-# FOREIGN_COMPLEX = 16
-# LABEL_ANY = 17
-# LABEL_FRACTION = 18
-
 N_PROPN = 13
+N_NUM = 14
 
-NATIVE_COMPLEX = 14
-FOREIGN_COMPLEX = 15
-LABEL_ANY = 16
-LABEL_FRACTION = 17
+NATIVE_COMPLEX = 15
+FOREIGN_COMPLEX = 16
+LABEL_ANY = 17
+LABEL_FRACTION = 18
 
-
+# this is for non-augmented data
 NATIVE_COMPLEX_ORIG = 7
 FOREIGN_COMPLEX_ORIG = 8
 LABEL_ANY_ORIG = 9
 LABEL_FRACTION_ORIG = 10
 
 DATASET_FIELDS_TRAIN = [ID, SENTENCE, START, END, TARGET, NATIVE_SEEN,
-                        FOREIGN_SEEN,
-                        NATIVE_COMPLEX, FOREIGN_COMPLEX,
-
+                        FOREIGN_SEEN, NATIVE_COMPLEX, FOREIGN_COMPLEX,
                         LABEL_ANY, LABEL_FRACTION]
+
 DATASET_FIELDS_TEST = [ID, SENTENCE, START, END, TARGET, NATIVE_SEEN,
                        FOREIGN_SEEN]
 
 EXTENDED_FIELDS = [TARGET_SENT_SIMILARITY, N_NOUN, N_VERB, N_ADJ, N_ADP, N_ADV,
-                   N_PROPN]
+                   N_PROPN, N_NUM]
 
 FIELD_SEPARATOR = "\t"
 
@@ -86,6 +78,6 @@ def get_data(lang, split, augmented=True):
                 fields = line.strip().split(FIELD_SEPARATOR)
                 assert len(fields) == expected_length, \
                     "Different field numbers ({} vs {})".format(
-                        len(fields), len(DATASET_FIELDS_TRAIN))
+                        len(fields), expected_length)
                 dataset.append(fields)
     return dataset
