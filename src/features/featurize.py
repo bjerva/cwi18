@@ -1,11 +1,11 @@
 import numpy as np
-from util.io import LABEL_ANY, LABEL_FRACTION
+from util.io import LABEL_ANY, LABEL_FRACTION, LABEL_ANY_ORIG, LABEL_FRACTION_ORIG
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.preprocessing import MinMaxScaler
 
 
 def featurize(dataset, feature_functions, binary=False, scale_features=True,
-              return_vectorizer=False):
+              return_vectorizer=False, augmented=True):
     feature2values = {
         func.name: func.process(dataset)
         for func in feature_functions
@@ -24,9 +24,11 @@ def featurize(dataset, feature_functions, binary=False, scale_features=True,
         X = mms.fit_transform(X)
 
     if binary:
-        y = np.array([int(x[LABEL_ANY]) for x in dataset])
+        idx = LABEL_ANY if augmented else LABEL_ANY_ORIG
+        y = np.array([int(x[idx]) for x in dataset])
     else:
-        y = np.array([float(x[LABEL_FRACTION]) for x in dataset])
+        idx = LABEL_FRACTION if augmented else LABEL_FRACTION_ORIG
+        y = np.array([float(x[idx]) for x in dataset])
     if return_vectorizer:
         return X, y, v
     else:

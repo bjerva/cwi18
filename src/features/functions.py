@@ -3,7 +3,7 @@ import pickle
 
 import scipy.sparse
 from features.vocab import Vocab
-from util.io import TARGET, NATIVE_SEEN, SENTENCE, TARGET_SENT_SIMILARITY
+from util.io import *
 import kenlm
 from util.bpe import infer_spaces
 from tqdm import tqdm
@@ -280,13 +280,62 @@ class WordLength(FeatureFunction):
         return [len(x[TARGET]) for x in data]
 
 
-class PartOfSpeech(FeatureFunction):
-    def __init__(self, name="part_of_speech"):
+
+class NounsCount(FeatureFunction):
+    def __init__(self, name="n_nouns", language=None):
         super().__init__(name)
 
     def process(self, data):
-        return [0 for _ in range(len(data))]  # TODO
+        return [int(x[N_NOUN]) for x in data]
 
+
+class VerbsCount(FeatureFunction):
+    def __init__(self, name="n_verbs", language=None):
+        super().__init__(name)
+
+    def process(self, data):
+        return [int(x[N_VERB]) for x in data]
+
+
+class AdjCount(FeatureFunction):
+    def __init__(self, name="n_adj", language=None):
+        super().__init__(name)
+
+    def process(self, data):
+        return [int(x[N_ADJ]) for x in data]
+
+
+class AdvCount(FeatureFunction):
+    def __init__(self, name="n_adv", language=None):
+        super().__init__(name)
+
+    def process(self, data):
+        return [int(x[N_ADV]) for x in data]
+
+
+class AdpCount(FeatureFunction):
+    def __init__(self, name="n_adp", language=None):
+        super().__init__(name)
+
+    def process(self, data):
+        return [int(x[N_ADP]) for x in data]
+
+
+class PropnCount(FeatureFunction):
+    def __init__(self, name="n_propn", language=None):
+        super().__init__(name)
+
+    def process(self, data):
+        return [int(x[N_PROPN]) for x in data]
+
+
+
+class NumCount(FeatureFunction):
+    def __init__(self, name="n_num", language=None):
+        super().__init__(name)
+
+    def process(self, data):
+        return [int(x[N_NUM]) for x in data]
 
 class NativeAnnotatorsNumber(FeatureFunction):
     def __init__(self, name="native_annotators_number", language=None):

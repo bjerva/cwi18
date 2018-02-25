@@ -10,6 +10,7 @@ from util.training import EarlyStopping, split_train_dev
 import os
 import json
 from util.model_io import CustomJSONEncoder
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 EN = "en"
 DE = "de"
@@ -23,7 +24,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
                    lr=3e-2, dropout=0.2, patience=5,
                    scale_features=True, aux_task_weight=1.0,
                    concatenate_train_data=False, share_input=False,
-                   official_dev=False):
+                   official_dev=False, random_forest=False):
     # Logging
     exp_dir = "../experiments/{}/{}/".format(dev_lang, exp_name)
     model_dir = exp_dir + "models"
@@ -135,6 +136,22 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
         print(msg)
         exp_log.write(msg+"\n")
         round_performances.append(metric)
+
+    # use random forest classifiers
+    if random_forest:
+        if binary:
+            rf = RandomForestClassifier(n_estimators=100)
+        else:
+            rf = RandomForestRegressor(n_estimators=100)
+        try:
+            X = np.concatenate([_x for _x, _y in data_tr])
+            y = np.concatenate([_y for _x, _y in data_tr])
+        except ValueError:
+            X, y = data_tr[dev_lang_index]
+        rf.fit(X, y)
+        pred = rf.predict(X_dv)
+        votes.append(pred)
+
     # Get final votes and compute scores
     votes = np.array(votes)
     if binary:
@@ -181,7 +198,14 @@ common_funcs = [
     Hypernyms,
     NativeAnnotatorsNumber,
     StemSurfaceLenghtDist,
-    IsLower
+    IsLower,
+    NounsCount,
+    VerbsCount,
+    AdjCount,
+    AdvCount,
+    AdpCount,
+    PropnCount
+    # NumCount
 ]
 
 funcs = {EN: common_funcs,
@@ -189,11 +213,12 @@ funcs = {EN: common_funcs,
          ES: common_funcs,
          FR: common_funcs}
 
-run_experiment("all2de-deep-nobvt-0", [ES,EN,DE], DE, funcs, binary=True,
+run_experiment("all2de-deep-rf-6", [ES,EN,DE], DE, funcs, binary=True,
                restarts=10, max_epochs=1000, lr=0.03, dropout=0.33,
                binary_vote_threshold=None, patience=20, aux_task_weight=.5,
                concatenate_train_data=True, batch_size=64,
-               hidden_layers=[20,30,20], share_input=True, official_dev=True)
+               hidden_layers=[20,30,20], share_input=True, official_dev=True,
+               random_forest=True)
 
 RESTARTS = [5, 10]
 PATIENCE = [10, 20]

@@ -8,19 +8,44 @@ END = 3
 TARGET = 4
 NATIVE_SEEN = 5
 FOREIGN_SEEN = 6
+
 TARGET_SENT_SIMILARITY = 7
-NATIVE_COMPLEX = 8
-FOREIGN_COMPLEX = 9
-LABEL_ANY = 10
-LABEL_FRACTION = 11
+N_NOUN = 8
+N_VERB = 9
+N_ADJ = 10
+N_ADV = 11
+N_ADP = 12
+# N_PROPN = 13
+# N_NUM = 14
+#
+# NATIVE_COMPLEX = 15
+# FOREIGN_COMPLEX = 16
+# LABEL_ANY = 17
+# LABEL_FRACTION = 18
+
+N_PROPN = 13
+
+NATIVE_COMPLEX = 14
+FOREIGN_COMPLEX = 15
+LABEL_ANY = 16
+LABEL_FRACTION = 17
+
+
+NATIVE_COMPLEX_ORIG = 7
+FOREIGN_COMPLEX_ORIG = 8
+LABEL_ANY_ORIG = 9
+LABEL_FRACTION_ORIG = 10
 
 DATASET_FIELDS_TRAIN = [ID, SENTENCE, START, END, TARGET, NATIVE_SEEN,
-                        FOREIGN_SEEN, TARGET_SENT_SIMILARITY,
+                        FOREIGN_SEEN,
                         NATIVE_COMPLEX, FOREIGN_COMPLEX,
 
                         LABEL_ANY, LABEL_FRACTION]
 DATASET_FIELDS_TEST = [ID, SENTENCE, START, END, TARGET, NATIVE_SEEN,
-                       FOREIGN_SEEN, TARGET_SENT_SIMILARITY]
+                       FOREIGN_SEEN]
+
+EXTENDED_FIELDS = [TARGET_SENT_SIMILARITY, N_NOUN, N_VERB, N_ADJ, N_ADP, N_ADV,
+                   N_PROPN]
 
 FIELD_SEPARATOR = "\t"
 
@@ -44,23 +69,23 @@ class Dataset(list):
         return 0
 
 
-def get_data(lang, split):
+def get_data(lang, split, augmented=True):
     # dataset = Dataset()
     dataset = []
-    dataset_files = glob.glob("../data_augmented/{}/*{}.tsv".format(lang,
-                                                                    split))
+    path = "../data/{}/*{}.tsv"
+    expected_length = len(DATASET_FIELDS_TEST) if split == "Test" else \
+        len(DATASET_FIELDS_TRAIN)
+    if augmented:
+        path = "../data_augmented/{}/*{}.tsv"
+        expected_length += len(EXTENDED_FIELDS)
+    dataset_files = glob.glob(path.format(lang, split))
     print("Reading files: ", dataset_files)
     for df in dataset_files:
         with open(df) as f:
             for line in f:
                 fields = line.strip().split(FIELD_SEPARATOR)
-                if split in ["Train", "Dev"]:
-                    assert len(fields) == len(DATASET_FIELDS_TRAIN), \
-                        "Different field numbers ({} vs {})".\
-                            format(len(fields), len(DATASET_FIELDS_TRAIN))
-                elif split in ["Test"]:
-                    assert len(fields) == len(DATASET_FIELDS_TEST), \
-                        "Different field numbers ({} vs {})".\
-                            format(len(fields), len(DATASET_FIELDS_TRAIN))
+                assert len(fields) == expected_length, \
+                    "Different field numbers ({} vs {})".format(
+                        len(fields), len(DATASET_FIELDS_TRAIN))
                 dataset.append(fields)
     return dataset
