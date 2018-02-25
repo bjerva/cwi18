@@ -1,5 +1,15 @@
 #!/usr/bin/env python
 
+'''
+Run example:
+python src/scripts/augment_with_pos.py ./data_augmented/*/*
+
+Requires models for de,en,es,(fr):
+sudo python -m spacy download <lang>
+
+Note: slightly bugged
+'''
+
 import spacy
 from sys import argv
 
