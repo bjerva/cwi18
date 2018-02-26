@@ -24,7 +24,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
                    lr=3e-2, dropout=0.2, patience=5,
                    scale_features=True, aux_task_weight=1.0,
                    concatenate_train_data=False, share_input=False,
-                   official_dev=False, random_forest=False):
+                   official_dev=False, random_forest=(100, 100, 100)):
     # Logging
     exp_dir = "../experiments/{}/{}/".format(dev_lang, exp_name)
     model_dir = exp_dir + "models"
@@ -55,7 +55,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
 
     # Feature functions shared across languages
     feature_functions_common = [
-        WordLength()
+
     ]
 
     # Lang-specific feature function instantiations
@@ -138,11 +138,11 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
         round_performances.append(metric)
 
     # use random forest classifiers
-    if random_forest:
+    for rf_estimators in random_forest:
         if binary:
-            rf = RandomForestClassifier(n_estimators=100)
+            rf = RandomForestClassifier(n_estimators=rf_estimators)
         else:
-            rf = RandomForestRegressor(n_estimators=100)
+            rf = RandomForestRegressor(n_estimators=rf_estimators)
         try:
             X = np.concatenate([_x for _x, _y in data_tr])
             y = np.concatenate([_y for _x, _y in data_tr])
@@ -197,6 +197,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
     exp_log.close()
 
 common_funcs = [
+    WordLength,
     Frequency,
     CharacterPerplexity,
     PrecomputedTargetSentenceSimilarity,
@@ -219,12 +220,12 @@ funcs = {EN: common_funcs,
          ES: common_funcs,
          FR: common_funcs}
 
-run_experiment("all2en-deep-rf-reg-2", [ES,EN,DE], EN, funcs, binary=False,
+run_experiment("all2en-deep-rf10-1", [ES,EN,DE], EN, funcs, binary=True,
                restarts=10, max_epochs=1000, lr=0.03, dropout=0.33,
                binary_vote_threshold=None, patience=20, aux_task_weight=.5,
                concatenate_train_data=True, batch_size=64,
                hidden_layers=[20,30,20], share_input=True, official_dev=True,
-               random_forest=True)
+               random_forest=[100]*10)
 
 RESTARTS = [5, 10]
 PATIENCE = [10, 20]

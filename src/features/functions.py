@@ -31,10 +31,11 @@ de2en = load_de2en(config.DE2EN)
 
 class FeatureFunction:
 
-    def __init__(self, name="_abstract"):
+    def __init__(self, name="_abstract", **kwargs):
         super().__init__()
         self.vocab = Vocab()
         self.name = name
+        self.kwargs = kwargs
 
     def inform(self, *datasets):
         print("Inform features")
@@ -273,7 +274,7 @@ class WordForm(FeatureFunction):
 
 
 class WordLength(FeatureFunction):
-    def __init__(self, name="word_length"):
+    def __init__(self, name="word_length", language=None):
         super().__init__(name)
 
     def process(self, data):
