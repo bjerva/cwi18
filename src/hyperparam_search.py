@@ -1,6 +1,6 @@
 
 from multiprocessing import Process
-from experiments.experiment import run_experiment
+from experiments.experiment import run_experiment, EN, DE, ES, funcs
 
 RESTARTS = [5,10]
 PATIENCE = [10]
