@@ -29,15 +29,16 @@ def sent_to_pos(nlp, fields):
     return (tags)
 
 langs = [
-    "en",
-    "de",
-    "es",
-    # "fr"
+    # "en",
+    # "de",
+    # "es",
+    "fr"
          ]
 
 splits = [
-    "Train",
-    "Dev"
+    # "Train",
+    # "Dev",
+    "Test"
 ]
 
 for lang in langs:
@@ -45,7 +46,9 @@ for lang in langs:
         data = get_data(lang, split, augmented=False)
         nlp = spacy.load(lang, disable=['parser', 'ner', 'textcat'])
         tss = TargetSentenceSimilarity(language=lang)
-        sims, _ = featurize(data, [tss], scale_features=False, augmented=False)
+        x_only = True if split == "Test" else False
+        sims, _ = featurize(data, [tss], scale_features=False, augmented=False,
+                            x_only=x_only)
         sims = np.array(sims).reshape(-1)
         print(sims.shape)
         print("Writing out...")

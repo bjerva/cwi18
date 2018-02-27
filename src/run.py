@@ -1,6 +1,7 @@
 import random
 
 import torch
+from torch.autograd import Variable
 from tqdm import tqdm
 from sklearn.utils import shuffle
 from sklearn.metrics import mean_absolute_error
@@ -13,7 +14,7 @@ import numpy as np
 def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
                 dev=None, clip=None, early_stopping=None, l2=1e-5,
                 lr_schedule=None, batches_per_epoch=None, shuffle_data=True,
-                loss_weights=None):
+                loss_weights=None, lang_id_weight=0.33):
     """
     Trains a model
     :param model:
@@ -61,15 +62,20 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
                                           model.binary)
             model.train()
             optimizer.zero_grad()
-            logits = model(d, input_task_id=task_id, output_all=False,
-                           train_mode=True)
+            logits, lang_id_pred = model(d, input_task_id=task_id,
+                                         output_all=False, train_mode=True,
+                                         output_lang_id=True)
+            lang_id_true = np.array([task_id] * size)
+            lang_id_true = Variable(torch.LongTensor(lang_id_true)).view(-1)
+            lang_id_loss = torch.nn.functional.cross_entropy(lang_id_pred, lang_id_true)
             gold = gold.view([size, 1])
             if model.binary:
-                logits = torch.nn.functional.sigmoid(logits)
+                logits = torch.nn.functional.sigmoid(logits)  # don't think we need this as cross_entropy performs softmax
                 loss = torch.nn.functional.binary_cross_entropy(logits, gold)
             else:
-                loss = (logits - gold).pow(2).sum()
+                loss = (logits - gold).pow(2).mean()
             loss = loss * loss_weights[task_id]
+            loss += lang_id_loss * lang_id_weight
             loss.backward()
 
             epoch_loss += loss.cpu()
@@ -139,6 +145,7 @@ def predict_model(model, data, task_id=0, batch_size=64):
     for size, start, end in batcher:
         d = prepare(data[start:end])
         model.eval()
-        pred = model(d, input_task_id=task_id, output_all=False).cpu()
+        pred = model(d, input_task_id=task_id, output_all=False,
+                     output_lang_id=False).cpu()
         predicted.extend(pred)
     return torch.stack(predicted)

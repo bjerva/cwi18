@@ -5,7 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 def featurize(dataset, feature_functions, binary=False, scale_features=True,
-              return_vectorizer=False, augmented=True):
+              return_vectorizer=False, augmented=True, x_only=False):
     feature2values = {
         func.name: func.process(dataset)
         for func in feature_functions
@@ -23,16 +23,19 @@ def featurize(dataset, feature_functions, binary=False, scale_features=True,
         mms = MinMaxScaler()
         X = mms.fit_transform(X)
 
-    if binary:
-        idx = LABEL_ANY if augmented else LABEL_ANY_ORIG
-        y = np.array([int(x[idx]) for x in dataset])
+    if x_only:
+        return X, None
     else:
-        idx = LABEL_FRACTION if augmented else LABEL_FRACTION_ORIG
-        y = np.array([float(x[idx]) for x in dataset])
-    if return_vectorizer:
-        return X, y, v
-    else:
-        return X, y
+        if binary:
+            idx = LABEL_ANY if augmented else LABEL_ANY_ORIG
+            y = np.array([int(x[idx]) for x in dataset])
+        else:
+            idx = LABEL_FRACTION if augmented else LABEL_FRACTION_ORIG
+            y = np.array([float(x[idx]) for x in dataset])
+        if return_vectorizer:
+            return X, y, v
+        else:
+            return X, y
 
 
 def feature_compatibility(functions, train_langs):

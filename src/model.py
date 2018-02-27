@@ -45,6 +45,11 @@ class MTMLP(nn.Module):
             self.outputs.append(layer)
             self.all_parameters.append(layer.weight)
 
+        # predict at lowest hidden layer, output dimensionality is number
+        # of languages (== number of tasks == number of outputs)
+        self.lang_id_output = nn.Linear(hidden_dims[0], len(output_dims))
+        self.all_parameters.append(self.lang_id_output.weight)
+
         # Define nonlinearity and dropout (used across all hidden
         # layers in self.forward())
         self.tanh = nn.Tanh()
@@ -55,7 +60,8 @@ class MTMLP(nn.Module):
         for weight_matrix in self.all_parameters:
             nn.init.xavier_normal(weight_matrix)
 
-    def forward(self, x, input_task_id=0, output_all=True, train_mode=False):
+    def forward(self, x, input_task_id=0, output_all=True, train_mode=False,
+                output_lang_id=True):
         """
         Defines a forward pass of the model. Note we don't softmax the output
         here, this is done by the loss function
@@ -69,9 +75,13 @@ class MTMLP(nn.Module):
         # print(input_task_id)
         dropout = self.dropout if train_mode else lambda u: u
         x = dropout(self.tanh(self.inputs[input_task_id](x)))
+        lang_id = self.lang_id_output(x)
         for layer in self.shared:
             x = dropout(self.tanh(layer(x)))
-        if output_all:
-            return [output(x) for output in self.outputs]
+
+        output = [output(x) for output in self.outputs] if output_all \
+            else self.outputs[input_task_id](x)
+        if output_lang_id:
+            return output, lang_id
         else:
-            return self.outputs[input_task_id](x)
+            return output
