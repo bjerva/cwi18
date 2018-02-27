@@ -1,4 +1,5 @@
 
+import itertools
 from multiprocessing import Process
 from experiments.experiment import run_experiment, EN, DE, ES, funcs
 
@@ -16,28 +17,36 @@ TEST_LANGS = [EN, DE, ES]
 
 
 for test_lang in TEST_LANGS:
-    TRAIN_DATA = [test_lang] + list(itertools.permutations(a, 2)) + list(itertools.permutations(a, 3))
+    TRAIN_DATA = [test_lang] + list(itertools.permutations(TEST_LANGS, 2)) + list(itertools.permutations(TEST_LANGS, 3))
     for restarts in RESTARTS:
         for patience in PATIENCE:
             for lr in LR:
                 for dropout in DROPOUT:
                     for bvt in BIN_VOTE_THRESHOLD:
+                        processes = []
                         for aux_weight in AUX_TASK_WEIGHT:
                             for concat in CONCAT_TRAIN:
                                 for share in SHARE_INPUT:
                                     for hidden in HIDDEN:
                                         for train_langs in TRAIN_DATA:
+                                            train_langs = list(set(train_langs))
+                                            if test_lang in train_langs:
+                                                train_langs.remove(test_lang)
+                                            train_langs = [test_lang] + train_langs
+
                                             exp_name = "rest{}-pat{}-lr{}-dropout{}-bvt{}-aux_weight{}-concat{}-share{}-hidden{}-train{}".format(restarts, patience, lr, dropout, bvt,
                                             aux_weight, concat, share, hidden,
                                             train_langs)
-                                            p1 = Process(target=run_experiment, args=[exp_name, train_langs, test_langs, funcs], kwargs={'binary':True, 'restarts':restarts,
+                                            p = Process(target=run_experiment, args=[exp_name, train_langs, test_lang, funcs], kwargs={'binary':True, 'restarts':restarts,
                                             'max_epochs':200, 'lr':lr, 'dropout':dropout,
                                             'binary_vote_threshold':bvt,
                                             'patience':patience,#target_sentence_sim-Train.txt
                                             'aux_task_weight':aux_weight,
                                             'concatenate_train_data':concat,
                                             'hidden_layers':hidden, 'share_input':share})
-
+                                            
+                                            p.start()
+                                            processes.append(p)
                                             '''
                                             run_experiment(exp_name,
                                                    train_langs, test_lang, funcs,
@@ -49,3 +58,5 @@ for test_lang in TEST_LANGS:
                                                    concatenate_train_data=concat,
                                                    hidden_layers=hidden, share_input=share)
                                             '''
+                        for p in processes:
+                            p.join()
