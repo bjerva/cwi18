@@ -211,6 +211,8 @@ def run_experiment(exp_name, train_langs, dev_lang, test_lang, functions,
         print("Generating final test predictions...")
         final_votes_te = np.mean(votes_te, axis=0) > binary_vote_threshold
     else:
+        votes_dv = np.clip(votes_dv, 0, 1)
+        votes_te = np.clip(votes_te, 0, 1)
         # Take median here
         final_votes_dv = np.median(votes_dv, axis=0)
         final_votes_te = np.median(votes_te, axis=0)
@@ -255,7 +257,7 @@ train_langs = [EN, DE, ES]
 test_lang = FR
 dev_lang = ES if test_lang == FR else test_lang
 
-run_experiment("xtest-xling-0", train_langs, dev_lang, test_lang, funcs, binary=True,
+run_experiment("xtest-xling-prob-0", train_langs, dev_lang, test_lang, funcs, binary=False,
                restarts=1, max_epochs=1000, lr=0.03, dropout=0.33,
                binary_vote_threshold=None, patience=20, aux_task_weight=.5,
                concatenate_train_data=False, batch_size=64,
