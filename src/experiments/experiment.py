@@ -1,8 +1,8 @@
 from features.featurize import featurize, feature_compatibility
 from features.functions import *
 from model import MTMLP
-from run import train_model, eval_model
-from util.io import get_data
+from run import train_model, eval_model, predict_model, predict_lang_id
+from util.io import get_data, write_out
 import numpy as np
 from sklearn.metrics import mean_absolute_error, f1_score, recall_score, \
     precision_score
@@ -18,13 +18,15 @@ ES = "es"
 FR = "fr"
 
 
-def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
+def run_experiment(exp_name, train_langs, dev_lang, test_lang, functions,
+                   restarts=1,
                    binary=False, binary_vote_threshold=None,
                    hidden_layers=(10, 10), max_epochs=30, batch_size=64,
                    lr=3e-2, dropout=0.2, patience=5,
                    scale_features=True, aux_task_weight=1.0,
                    concatenate_train_data=False, share_input=False,
-                   official_dev=False, random_forest=(100, 100, 100)):
+                   official_dev=False, random_forest=(100, 100, 100),
+                   lang_id_weight=0.33):
     # Logging
     exp_dir = "../experiments/{}/{}/".format(dev_lang, exp_name)
     model_dir = exp_dir + "models"
@@ -40,9 +42,11 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
         exp_log.write("{}{}{}\n".format(k, " "*(max_len_key+4-len(k)), args[k]))
     exp_log.write("\n")
 
-    all_langs = train_langs
+    all_langs = train_langs.copy()
     if dev_lang not in train_langs:
         all_langs.append(dev_lang)
+    if test_lang and test_lang not in train_langs:
+        all_langs.append(test_lang)
 
     # Read training data for each training language
     if official_dev:
@@ -66,7 +70,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
     }
 
     print(feature_functions)
-
+    print(train_langs)
     # Featurize data, each element in the list is a tuple (X, y)
     featurized_data = [
         featurize(all_data[lang], feature_functions[lang], binary=binary,
@@ -104,9 +108,15 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
 
     # Perform specified number of random restarts, each restart works as
     # voter in ensemble
-    votes = []
+    votes_dv = []
+    votes_te = []
     round_performances = []
     metric_name = "F1" if binary else "MAE"
+
+    if test_lang:
+        test_data = get_data(test_lang, "Test")
+        X_te, _ = featurize(test_data, feature_functions[test_lang],
+                            x_only=True, scale_features=scale_features)
 
     for round_ in range(1, restarts+1):
 
@@ -126,15 +136,25 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
         loss_weights[dev_lang_index] = 1
         train_model(model, data_tr, batch_size, lr, max_epochs,
                     early_stopping=early_stopping, dev=data_dv,
-                    loss_weights=loss_weights)
+                    loss_weights=loss_weights,
+                    lang_id_weight=lang_id_weight)
 
         metric, spearman, predictions = eval_model(
             model, X_dv, y_dv, task_id=dev_lang_index)
-        votes.append(predictions)
+        votes_dv.append(predictions)
         msg = "  Round {} ({}), {}={:1.4f}, rank corr={:1.4f}".format(
             round_, dev_lang, metric_name, metric, spearman)
         print(msg)
         exp_log.write(msg+"\n")
+
+        if test_lang:
+            predicted_lang_index = predict_lang_id(model, X_te).sum(axis=0).argmax()
+            print("Predicted language: ",train_langs[predicted_lang_index])
+            test_lang_index = train_langs.index(test_lang) \
+                if test_lang in train_langs else predicted_lang_index
+            pred_te = predict_model(model, X_te, task_id=test_lang_index)
+            votes_te.append(pred_te)
+
         round_performances.append(metric)
 
     # use random forest classifiers
@@ -150,7 +170,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
             X, y = data_tr[dev_lang_index]
         rf.fit(X, y)
         pred = rf.predict(X_dv)
-        votes.append(pred)
+        votes_dv.append(pred)
         score = f1_score(y_dv, pred) if binary else \
             mean_absolute_error(y_dv, pred)
         round_performances.append(score)
@@ -158,17 +178,21 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
         print(msg)
         exp_log.write(msg+"\n")
 
+        if test_lang:
+            pred_te = rf.predict(X_te)
+            votes_te.append(pred_te)
+
     # Get final votes and compute scores
-    votes = np.array(votes)
-    print("Votes shape:", votes.shape)
+    votes_dv = np.array(votes_dv)
+    print("Votes shape:", votes_dv.shape)
     if binary:
         if binary_vote_threshold is None:
             print("Getting optimal threshold...")
             best_score = 0.0
             best_threshold = 0.0
             for binary_vote_threshold in np.arange(0.0, 1.0, 0.1):
-                final_votes = np.mean(votes, axis=0) > binary_vote_threshold
-                score = f1_score(y_dv, final_votes)
+                final_votes_dv = np.mean(votes_dv, axis=0) > binary_vote_threshold
+                score = f1_score(y_dv, final_votes_dv)
                 if score > best_score:
                     best_score = score
                     best_threshold = binary_vote_threshold
@@ -176,17 +200,22 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
             print(msg)
             exp_log.write(msg+'\n')
             binary_vote_threshold = best_threshold
-        final_votes = np.mean(votes, axis=0) > binary_vote_threshold
-        score = f1_score(y_dv, final_votes)
-        recall = recall_score(y_dv, final_votes)
-        prec = precision_score(y_dv, final_votes)
+        final_votes_dv = np.mean(votes_dv, axis=0) > binary_vote_threshold
+        score = f1_score(y_dv, final_votes_dv)
+        recall = recall_score(y_dv, final_votes_dv)
+        prec = precision_score(y_dv, final_votes_dv)
         all_scores = "Final P: {:1.4f}, R: {:1.4f}".format(prec, recall)
         print(all_scores)
         exp_log.write(all_scores + "\n")
+
+        print("Generating final test predictions...")
+        final_votes_te = np.mean(votes_te, axis=0) > binary_vote_threshold
     else:
         # Take median here
-        final_votes = np.median(votes, axis=0)
-        score = mean_absolute_error(y_dv, final_votes)
+        final_votes_dv = np.median(votes_dv, axis=0)
+        final_votes_te = np.median(votes_te, axis=0)
+        score = mean_absolute_error(y_dv, final_votes_dv)
+
     round_performances = np.array(round_performances)
     final_eval = "Final {} ({}): {:1.4f} (round mean: {:1.4f}, min: {:1.4f}, " \
                  "max: {:1.4f})".format(metric_name, dev_lang, score,
@@ -196,6 +225,7 @@ def run_experiment(exp_name, train_langs, dev_lang, functions, restarts=1,
     print(final_eval)
     exp_log.write(final_eval+"\n")
     exp_log.close()
+    write_out(final_votes_te, exp_dir+"predictions-{}.txt".format(test_lang))
 
 common_funcs = [
     WordLength,
@@ -221,12 +251,16 @@ funcs = {EN: common_funcs,
          ES: common_funcs,
          FR: common_funcs}
 
-run_experiment("xtestlangid", [ES,EN,DE], DE, funcs, binary=True,
-               restarts=10, max_epochs=1000, lr=0.03, dropout=0.33,
+train_langs = [EN, DE, ES]
+test_lang = FR
+dev_lang = ES if test_lang == FR else test_lang
+
+run_experiment("xtest-xling-0", train_langs, dev_lang, test_lang, funcs, binary=True,
+               restarts=1, max_epochs=1000, lr=0.03, dropout=0.33,
                binary_vote_threshold=None, patience=20, aux_task_weight=.5,
                concatenate_train_data=False, batch_size=64,
                hidden_layers=[20], share_input=True, official_dev=True,
-               random_forest=[])
+               random_forest=[], lang_id_weight=0.5)
 
 RESTARTS = [5, 10]
 PATIENCE = [10, 20]

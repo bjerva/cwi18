@@ -81,3 +81,10 @@ def get_data(lang, split, augmented=True):
                         len(fields), expected_length)
                 dataset.append(fields)
     return dataset
+
+
+def write_out(predictions, filename):
+    if predictions.dtype == bool:
+        predictions = predictions.astype(int)
+    with open(filename, "w") as out:
+        out.write("\n".join([str(p[0]) for p in predictions]))

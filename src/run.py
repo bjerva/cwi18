@@ -52,6 +52,8 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
 
     for epoch in tqdm(range(epochs)):
         epoch_loss = 0
+        epoch_lang_id_loss = []
+        epoch_cwi_loss = []
         epoch_data_size = 0
         for b in range(batches_per_epoch):
             task_id = random.choice(range(len(training_datasets)))
@@ -68,6 +70,8 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
             lang_id_true = np.array([task_id] * size)
             lang_id_true = Variable(torch.LongTensor(lang_id_true)).view(-1)
             lang_id_loss = torch.nn.functional.cross_entropy(lang_id_pred, lang_id_true)
+            epoch_lang_id_loss.append(lang_id_loss.data.numpy()[0])
+
             gold = gold.view([size, 1])
             if model.binary:
                 logits = torch.nn.functional.sigmoid(logits)  # don't think we need this as cross_entropy performs softmax
@@ -75,6 +79,7 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
             else:
                 loss = (logits - gold).pow(2).mean()
             loss = loss * loss_weights[task_id]
+            epoch_cwi_loss.append(loss.data.numpy()[0])
             loss += lang_id_loss * lang_id_weight
             loss.backward()
 
@@ -86,14 +91,12 @@ def train_model(model, training_datasets, batch_size=64, lr=1e-3, epochs=30,
 
             optimizer.step()
 
+        # print("Epoch lang id loss:", np.array(epoch_lang_id_loss).mean())
+        # print("Epoch CWI loss:", np.array(epoch_cwi_loss).mean())
+
         if lr_schedule is not None:
             optimizer = lr_schedule(optimizer, epoch)
 
-        # print("Average epoch loss: {0}".format(
-        #     (epoch_loss / epoch_data_size).data.numpy()))
-        #
-        # print("Latest Epoch Train RMSE {0}".format(eval_model(
-        #     model, X, y, task_id=task_id, batch_size=batch_size)[0]))
         if dev is not None:
             X_dev, y_dev = dev
             METRIC_NAME = "F1" if model.binary else "MAE"
@@ -119,7 +122,7 @@ def eval_model(model, X, y_true, task_id=0, batch_size=64):
 
 
 def eval_model_regression(model, X, y_true, task_id=0, batch_size=64):
-    predicted = predict_model(model, X, task_id, batch_size).data.numpy()
+    predicted = predict_model(model, X, task_id, batch_size)
     predicted = predicted.reshape([-1])
     mae, rank_corr = 0, float('nan')
     mae = mean_absolute_error(y_true, predicted)
@@ -129,7 +132,7 @@ def eval_model_regression(model, X, y_true, task_id=0, batch_size=64):
 
 
 def eval_model_binary(model, X, y_true, task_id=0, batch_size=64):
-    predicted = predict_model(model, X, task_id, batch_size).data.numpy()
+    predicted = predict_model(model, X, task_id, batch_size)
     predicted = predicted.reshape([-1]) >= 0
     f1 = f1_score(y_true, predicted)
     if predicted.sum() > 0:
@@ -148,4 +151,16 @@ def predict_model(model, data, task_id=0, batch_size=64):
         pred = model(d, input_task_id=task_id, output_all=False,
                      output_lang_id=False).cpu()
         predicted.extend(pred)
-    return torch.stack(predicted)
+    return torch.stack(predicted).data.numpy()
+
+
+def predict_lang_id(model, data, task_id=0, batch_size=64):
+    batcher = Batcher(len(data), batch_size)
+    predicted = []
+    for size, start, end in batcher:
+        d = prepare(data[start:end])
+        model.eval()
+        _, lang_id_pred = model(d, input_task_id=task_id, output_all=False,
+                     output_lang_id=True)
+        predicted.extend(lang_id_pred.cpu())
+    return torch.stack(predicted).data.numpy()
