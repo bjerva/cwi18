@@ -87,4 +87,4 @@ def write_out(predictions, filename):
     if predictions.dtype == bool:
         predictions = predictions.astype(int)
     with open(filename, "w") as out:
-        out.write("\n".join([str(p[0]) for p in predictions]))
+        out.write("\n".join([str(p) for p in predictions]))

@@ -123,7 +123,6 @@ def eval_model(model, X, y_true, task_id=0, batch_size=64):
 
 def eval_model_regression(model, X, y_true, task_id=0, batch_size=64):
     predicted = predict_model(model, X, task_id, batch_size)
-    predicted = predicted.reshape([-1])
     mae, rank_corr = 0, float('nan')
     mae = mean_absolute_error(y_true, predicted)
     if predicted.sum() > 0:
@@ -133,7 +132,6 @@ def eval_model_regression(model, X, y_true, task_id=0, batch_size=64):
 
 def eval_model_binary(model, X, y_true, task_id=0, batch_size=64):
     predicted = predict_model(model, X, task_id, batch_size)
-    predicted = predicted.reshape([-1]) >= 0
     f1 = f1_score(y_true, predicted)
     if predicted.sum() > 0:
         rank_corr = spearmanr(y_true, predicted)[0]
@@ -151,7 +149,10 @@ def predict_model(model, data, task_id=0, batch_size=64):
         pred = model(d, input_task_id=task_id, output_all=False,
                      output_lang_id=False).cpu()
         predicted.extend(pred)
-    return torch.stack(predicted).data.numpy()
+    predicted = torch.stack(predicted).data.numpy().reshape([-1])
+    if model.binary:
+        predicted = predicted >= 0
+    return predicted
 
 
 def predict_lang_id(model, data, task_id=0, batch_size=64):

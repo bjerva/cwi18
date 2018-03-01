@@ -183,8 +183,11 @@ def run_experiment(exp_name, train_langs, dev_lang, test_lang, functions,
             votes_te.append(pred_te)
 
     # Get final votes and compute scores
+
     votes_dv = np.array(votes_dv)
-    print("Votes shape:", votes_dv.shape)
+    votes_te = np.array(votes_te)
+    print("Votes shape (dev):", votes_dv.shape)
+    print("Votes shape: (test)", votes_te.shape)
     if binary:
         if binary_vote_threshold is None:
             print("Getting optimal threshold...")
@@ -253,49 +256,30 @@ funcs = {EN: common_funcs,
          ES: common_funcs,
          FR: common_funcs}
 
-train_langs = [EN, DE, ES]
-test_lang = FR
+train_langs = [
+    EN,
+    DE,
+    ES
+]
+test_lang = DE
 dev_lang = ES if test_lang == FR else test_lang
 
-run_experiment("xtest-xling-prob-0", train_langs, dev_lang, test_lang, funcs, binary=False,
-               restarts=1, max_epochs=1000, lr=0.03, dropout=0.33,
-               binary_vote_threshold=None, patience=20, aux_task_weight=.5,
-               concatenate_train_data=False, batch_size=64,
-               hidden_layers=[20], share_input=True, official_dev=True,
-               random_forest=[], lang_id_weight=0.5)
+run_experiment("final-3rf-10n-lr0.003-shallow", train_langs, dev_lang, test_lang, funcs,
+               binary=True,
+               restarts=10, max_epochs=1000, lr=0.003, dropout=0.33,
+               binary_vote_threshold=None, patience=15, aux_task_weight=.3,
+               concatenate_train_data=True, batch_size=64,
+               hidden_layers=[20], share_input=True, official_dev=False,
+               random_forest=[100]*3, lang_id_weight=0.5)
 
-RESTARTS = [5, 10]
-PATIENCE = [10, 20]
-LR = [3e-2, 1e-3, 3e-3]
-DROPOUT = [0.33]
-BIN_VOTE_THRESHOLD = [0.0, 0.2, 0.5]
-AUX_TASK_WEIGHT = [0.3, 0.5, 1]
-CONCAT_TRAIN = [True, False]
-SHARE_INPUT = [True, False]
-HIDDEN = [[10], [10, 10], [5, 10, 5]]
-TRAIN_DATA = [[DE], [DE, EN], [DE, ES], [DE, EN, ES]]
+# RESTARTS = [5, 10]
+# PATIENCE = [10, 20]
+# LR = [3e-2, 1e-3, 3e-3]
+# DROPOUT = [0.33]
+# BIN_VOTE_THRESHOLD = [0.0, 0.2, 0.5]
+# AUX_TASK_WEIGHT = [0.3, 0.5, 1]
+# CONCAT_TRAIN = [True, False]
+# SHARE_INPUT = [True, False]
+# HIDDEN = [[10], [10, 10], [5, 10, 5]]
+# TRAIN_DATA = [[DE], [DE, EN], [DE, ES], [DE, EN, ES]]
 #
-# for restarts in RESTARTS:
-#   for patience in PATIENCE:
-#     for lr in LR:
-#       for dropout in DROPOUT:
-#         for bvt in BIN_VOTE_THRESHOLD:
-#           for aux_weight in AUX_TASK_WEIGHT:
-#             for concat in CONCAT_TRAIN:
-#               for share in SHARE_INPUT:
-#                 for hidden in HIDDEN:
-#                   for train_langs in TRAIN_DATA:
-#                         exp_name = "rest{}-pat{}-lr{}-dropout{}-bvt{}-aux_" \
-#                                  "weight{}-concat{}-share{}-hidden{}-train{}"\
-#                             .format(restarts, patience, lr, dropout, bvt,
-#                                     aux_weight, concat, share, hidden,
-#                                     train_langs)
-#
-#                         run_experiment(exp_name, train_langs, DE, funcs,
-#                                        binary=True, restarts=restarts,
-#                                        max_epochs=200, lr=lr, dropout=dropout,
-#                                        binary_vote_threshold=bvt,
-#                                        patience=patience,target_sentence_sim-Train.txt
-#                                        aux_task_weight=aux_weight,
-#                                        concatenate_train_data=concat,
-#                                        hidden_layers=hidden, share_input=share)
